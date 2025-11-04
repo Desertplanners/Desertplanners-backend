@@ -22,7 +22,7 @@ import sectionRoutes from "./routes/sectionRoutes.js";
 
 dotenv.config();
 
-// 🟢 Database connection
+// 🟢 Connect Database
 connectDB();
 
 const app = express();
@@ -33,12 +33,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-// 🌍 Allowed Origins (for local + deployed frontend)
+// 🌍 Allowed Origins (local + deployed frontend)
 const allowedOrigins = [
-  "http://localhost:5173", // Vite local dev
-  "http://localhost:3000", // CRA local dev
-  "https://desertplanner-frontend.vercel.app", // Vercel deployed frontend
-  process.env.FRONTEND_URL, // fallback from .env
+  "http://localhost:5173", // for Vite local dev
+  "http://localhost:3000", // for CRA local dev
+  "https://desertplanners.vercel.app", // ✅ your live frontend domain
+  process.env.FRONTEND_URL, // fallback from .env if needed
 ];
 
 // 🛡️ CORS setup (supports multiple origins)
@@ -49,6 +49,7 @@ app.use(
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       } else {
+        console.log("❌ Blocked by CORS:", origin);
         return callback(new Error("Not allowed by CORS"));
       }
     },
@@ -66,7 +67,6 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/enquiries", enquiryRoutes);
-app.use("/api/admin", userRoutes);
 app.use("/api/visas", visaRoutes);
 app.use("/api/sections", sectionRoutes);
 
@@ -79,7 +79,7 @@ app.get("/", (req, res) => {
 const __dirname = path.resolve();
 app.use("/uploads", express.static(path.join(__dirname, "/uploads")));
 
-// 🚀 HTTP + Socket.io Server setup
+// 🚀 HTTP + Socket.io setup
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
@@ -91,18 +91,18 @@ const io = new Server(server, {
 
 // 💬 Socket connection
 io.on("connection", (socket) => {
-  console.log("New client connected:", socket.id);
+  console.log("🟢 New client connected:", socket.id);
 
   socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
+    console.log("🔴 Client disconnected:", socket.id);
   });
 });
 
-// 🔗 Make io accessible in controllers
+// 🔗 Make io accessible globally in controllers
 app.set("io", io);
 
 // 🟢 Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () =>
-  console.log(`🚀 Server running on http://localhost:${PORT}`)
-);
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
