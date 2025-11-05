@@ -1,53 +1,60 @@
-// middleware/authMiddleware.js
 import jwt from "jsonwebtoken";
 import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
-import Admin from "../models/adminModel.js"; // ✅ Needed for adminAuth
+import Admin from "../models/adminModel.js";
 
-// Protect normal user routes
-export const protect = async (req, res, next) => {
+// ✅ Protect normal user routes
+export const protect = asyncHandler(async (req, res, next) => {
   let token;
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
+  if (req.headers.authorization?.startsWith("Bearer")) {
     try {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = await User.findById(decoded.id).select("-password");
-      next();
+      return next();
     } catch (err) {
-      res.status(401).json({ message: "Not authorized, token failed" });
+      return res.status(401).json({ message: "Not authorized, token failed" });
     }
   }
   if (!token) {
-    res.status(401).json({ message: "Not authorized, no token" });
+    return res.status(401).json({ message: "Not authorized, no token" });
   }
-};
+});
 
-// Middleware to check if user is admin (used with user routes)
-export const admin = (req, res, next) => {
-  if (req.user && req.user.isAdmin) next();
-  else {
-    res.status(403);
-    throw new Error("Not authorized as admin");
-  }
-};
-
-// Admin route protection (used with admin routes)
-export const adminAuth = async (req, res, next) => {
+// ✅ Admin route protection
+export const adminAuth = asyncHandler(async (req, res, next) => {
   const token = req.header("Authorization")?.replace("Bearer ", "");
-  if (!token) return res.status(401).json({ message: "Not authorized" });
+  if (!token || token === "undefined" || token === "null") {
+    return res.status(401).json({ message: "Not authorized" });
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const admin = await Admin.findById(decoded.id); // ✅ Fix: use Admin model
+    const admin = await Admin.findById(decoded.id);
     if (!admin) return res.status(401).json({ message: "Not authorized" });
-
-    req.admin = admin; // store admin info
+    req.admin = admin;
     next();
   } catch (err) {
-    console.log(err); // optional: log for debugging
+    console.error("Admin Auth Error:", err);
     res.status(401).json({ message: "Invalid token" });
   }
-};
+});
+
+// ✅ Optional auth (guest + user)
+export const optionalAuth = asyncHandler(async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer")) {
+    const token = authHeader.split(" ")[1];
+    if (!token || token === "undefined" || token === "null") {
+      return next();
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id).select("-password");
+    } catch (error) {
+      console.error("optionalAuth error:", error.message);
+    }
+  }
+  next(); // allow guest if token not present
+});

@@ -1,17 +1,79 @@
+// models/Booking.js
 import mongoose from "mongoose";
 
-const BookingSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  items: [
-    {
-      tourId: { type: mongoose.Schema.Types.ObjectId, ref: "Tour" },
-      date: Date,
-      guests: Number,
+const BookingSchema = new mongoose.Schema(
+  {
+    // ✅ Logged-in User (optional for guest booking)
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
     },
-  ],
-  totalPrice: { type: Number, required: true },
-  status: { type: String, default: "confirmed" }, // confirmed / pending / cancelled
-  createdAt: { type: Date, default: Date.now },
-});
+
+    // ✅ Guest Info (only if user not logged in)
+    guestName: {
+      type: String,
+      trim: true,
+    },
+    guestEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    guestContact: {
+      type: String,
+      trim: true,
+    },
+
+    // ✅ Booking Items (Tour details)
+    items: [
+      {
+        tourId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Tour",
+          required: true,
+        },
+        date: {
+          type: Date,
+          required: true,
+        },
+        guests: {
+          type: Number,
+          required: true,
+        },
+        pickupPoint: {
+          type: String,
+          trim: true,
+        },
+        dropPoint: {
+          type: String,
+          trim: true,
+        },
+      },
+    ],
+
+    // ✅ Payment & Pricing Info
+    totalPrice: {
+      type: Number,
+      required: true,
+    },
+
+    // ✅ Additional Info
+    specialRequest: {
+      type: String,
+      trim: true,
+    },
+
+    // ✅ Booking Status
+    status: {
+      type: String,
+      enum: ["pending", "confirmed", "cancelled"],
+      default: "confirmed",
+    },
+
+    // ✅ Auto timestamps
+  },
+  { timestamps: true }
+);
 
 export default mongoose.model("Booking", BookingSchema);
