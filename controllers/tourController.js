@@ -86,19 +86,20 @@ export const addTour = async (req, res) => {
       return res.status(404).json({ message: "Category not found" });
 
     // ✅ Image handling with full safety
-    const mainImage =
-      req.files?.mainImage?.[0]?.path ||
-      req.files?.mainImage?.[0]?.secure_url ||
-      "";
-    const galleryImages = req.files?.galleryImages
-      ? req.files.galleryImages.map((f) => f.path)
-      : [];
-
-    if (!mainImage) {
-      return res
-        .status(400)
-        .json({ message: "Main image upload failed or missing" });
+    let mainImage = "";
+    if (req.files?.mainImage?.length > 0) {
+      const file = req.files.mainImage[0];
+      mainImage = file.path || file.secure_url || "";
+    } else {
+      console.warn("⚠️ No main image uploaded, assigning default image");
+      mainImage =
+        "https://res.cloudinary.com/dmnzflxh6/image/upload/v1731234567/default-tour.webp";
     }
+
+    const galleryImages =
+      req.files?.galleryImages?.length > 0
+        ? req.files.galleryImages.map((f) => f.path || f.secure_url || "")
+        : [];
 
     const tour = new Tour({
       title,
@@ -126,27 +127,21 @@ export const addTour = async (req, res) => {
     console.log("✅ Tour saved successfully:", tour.title);
     res.status(201).json({ message: "Tour added successfully", tour });
   } catch (err) {
-  console.error("============== ❌ ADD TOUR ERROR ❌ ==============");
+  const plainError = `
+==================== ❌ ADD TOUR ERROR ❌ ====================
+MESSAGE: ${err?.message || "No message"}
+NAME: ${err?.name || "No name"}
+STACK: ${(err?.stack || "").split("\n").slice(0, 4).join("\n")}
+BODY: ${JSON.stringify(req.body, null, 2)}
+FILES: ${req.files ? Object.keys(req.files).join(", ") : "❌ No files"}
+=============================================================
+  `;
 
-  // Force stringify (even nested)
-  const safeError =
-    typeof err === "object"
-      ? JSON.stringify(err, Object.getOwnPropertyNames(err), 2)
-      : String(err);
+  // 🔥 Ye line Render pe 100% text print karegi
+  process.stdout.write(plainError + "\n");
 
-  // Render safe: print line-by-line instead of whole object
-  console.error("💥 ERROR (RAW):", safeError);
-  console.error("💥 MESSAGE:", err?.message || "No message");
-  console.error("💥 NAME:", err?.name || "Unknown");
-  console.error("💥 STACK:", err?.stack?.split("\n").slice(0, 3).join("\n") || "No stack");
-  console.error("📦 BODY:", JSON.stringify(req.body, null, 2));
-  console.error("📸 FILE KEYS:", req.files ? Object.keys(req.files) : "❌ No files");
-  console.error("======================================================");
-
-  // ⚠️ Fallback log in plain string (Render always prints this)
-  console.log("🔥 ADD TOUR ERROR (STRING):", safeError);
-
-  return res.status(500).json({ message: err.message || "Server error" });
+  // ✅ Also send back to frontend
+  return res.status(500).json({ message: err?.message || "Server Error" });
 }
 };
 
