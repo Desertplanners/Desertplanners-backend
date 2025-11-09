@@ -1,7 +1,7 @@
 import Tour from "../models/Tour.js";
 import Category from "../models/categoryModel.js";
 import slugify from "slugify";
-
+import mongoose from "mongoose";
 // 🧠 Helper function to safely parse arrays
 const parseArray = (field) => {
   if (!field) return [];
@@ -125,10 +125,25 @@ export const addTour = async (req, res) => {
     await tour.save();
     console.log("✅ Tour saved successfully:", tour.title);
     res.status(201).json({ message: "Tour added successfully", tour });
-  } catch (err) {
-    console.error("❌ Error adding tour (Full Trace):", err);
-    res.status(500).json({ message: err.message });
+  }  catch (err) {
+  console.error("============== ❌ ADD TOUR ERROR ❌ ==============");
+  try {
+    const safeError =
+      typeof err === "object"
+        ? JSON.stringify(err, Object.getOwnPropertyNames(err), 2)
+        : String(err);
+    console.error("💥 RAW ERROR:", safeError);
+  } catch (jsonErr) {
+    console.error("💥 JSON.stringify failed:", jsonErr);
+    console.error("💥 Fallback Error:", String(err));
   }
+  console.error("🧨 ERROR MESSAGE:", err?.message || "No message");
+  console.error("📦 BODY AT FAILURE:", JSON.stringify(req.body, null, 2));
+  console.error("📸 FILES AT FAILURE:", req.files ? Object.keys(req.files) : "❌ No files");
+  console.error("======================================================");
+
+  return res.status(500).json({ message: err.message });
+}
 };
 
 // 🟠 Update Tour
@@ -141,7 +156,10 @@ export const updateTour = async (req, res) => {
     console.log("📩 Request URL:", req.originalUrl);
     console.log("🆔 Tour ID Param:", req.params.id);
     console.log("🧾 Request Body:", JSON.stringify(req.body, null, 2));
-    console.log("📸 Files Received:", req.files ? Object.keys(req.files) : "❌ No files");
+    console.log(
+      "📸 Files Received:",
+      req.files ? Object.keys(req.files) : "❌ No files"
+    );
 
     const { id } = req.params;
     const {
@@ -177,7 +195,10 @@ export const updateTour = async (req, res) => {
     }
 
     if (req.files && req.files.galleryImages?.length > 0) {
-      console.log("🖼 Updating gallery images count:", req.files.galleryImages.length);
+      console.log(
+        "🖼 Updating gallery images count:",
+        req.files.galleryImages.length
+      );
       tour.galleryImages = req.files.galleryImages.map((f) => f.path);
     }
 
@@ -231,6 +252,33 @@ export const updateTour = async (req, res) => {
     tour.exclusions = parseArray(exclusions);
     tour.relatedTours = parseArray(relatedTours);
 
+    if (price !== undefined) tour.price = Number(price);
+    if (maxGuests !== undefined) tour.maxGuests = Number(maxGuests);
+    if (cancellationPolicy !== undefined) {
+      try {
+        const parsedPolicy =
+          typeof cancellationPolicy === "string"
+            ? JSON.parse(cancellationPolicy)
+            : cancellationPolicy;
+        tour.cancellationPolicy = parsedPolicy;
+      } catch (e) {
+        console.warn("⚠️ Invalid cancellationPolicy format:", e.message);
+      }
+    }
+    if (relatedTours !== undefined) {
+      try {
+        const parsedRelated =
+          typeof relatedTours === "string"
+            ? JSON.parse(relatedTours)
+            : relatedTours;
+        tour.relatedTours = parsedRelated.filter((id) =>
+          mongoose.Types.ObjectId.isValid(id)
+        );
+      } catch (e) {
+        console.warn("⚠️ Invalid relatedTours format:", e.message);
+      }
+    }
+
     console.log("💾 Saving updated tour...");
     await tour.save();
 
@@ -238,23 +286,21 @@ export const updateTour = async (req, res) => {
     console.log("============== ✅ UPDATE TOUR DEBUG END ✅ ==============");
 
     res.json({ message: "Tour updated successfully", tour });
-
   } catch (err) {
-    console.error("============== ❌ UPDATE TOUR ERROR ❌ ==============");
-    console.error("🧨 ERROR MESSAGE:", err.message);
-    console.error("📂 STACK TRACE:", err.stack);
-    console.error("📦 BODY AT FAILURE:", req.body);
-    console.error("📸 FILES AT FAILURE:", req.files);
-    console.error("======================================================");
-    debugger; // 🧠 Stop here on runtime error (visible in VS Code debugger)
+  console.error("============== ❌ UPDATE TOUR ERROR ❌ ==============");
+  console.error("🧨 ERROR MESSAGE:", err.message);
+  console.error("📂 STACK TRACE:", err.stack);
+  console.error("📦 BODY AT FAILURE:", JSON.stringify(req.body, null, 2));
+  console.error("📸 FILES AT FAILURE:", req.files ? Object.keys(req.files) : "❌ No files");
+  console.error("FULL ERROR JSON:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+  console.error("======================================================");
 
-    return res.status(500).json({
-      message: err.message,
-      stack: err.stack,
-    });
-  }
+  return res.status(500).json({
+    message: err.message,
+    stack: err.stack,
+  });
+}
 };
-
 
 // 🟡 Get All Tours
 export const getTours = async (req, res) => {
