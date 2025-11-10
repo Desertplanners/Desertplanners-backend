@@ -41,10 +41,15 @@ const parseCancellationPolicy = (policy) => {
 };
 
 // 🟢 Add new tour
+// 🟢 Add new tour (safe version)
 export const addTour = async (req, res) => {
   try {
-    console.log("📦 Incoming addTour Request");
-    console.log("🧾 Files received:", req.files);
+    console.log("\n=================== 📦 ADD TOUR START ===================");
+    console.log("🧾 Request Body:", JSON.stringify(req.body, null, 2));
+    console.log(
+      "📸 Files Received:",
+      req.files ? Object.keys(req.files) : "❌ No files"
+    );
 
     const {
       title,
@@ -65,7 +70,7 @@ export const addTour = async (req, res) => {
       relatedTours,
     } = req.body;
 
-    // ✅ Field validation
+    // ✅ Required field validation
     if (
       !title ||
       !description ||
@@ -77,17 +82,29 @@ export const addTour = async (req, res) => {
     ) {
       return res
         .status(400)
-        .json({ message: "All required fields are required" });
+        .json({ message: "All required fields must be filled." });
     }
 
-    // ✅ Category check
-    const foundCategory = await Category.findById(category);
-    if (!foundCategory)
-      return res.status(404).json({ message: "Category not found" });
+    // ✅ Category validation (ID, slug, or name)
+    let foundCategory = null;
+    if (mongoose.Types.ObjectId.isValid(category)) {
+      foundCategory = await Category.findById(category);
+    } else {
+      foundCategory = await Category.findOne({
+        $or: [{ slug: category }, { name: category }],
+      });
+    }
 
-    // ✅ Image handling with full safety
+    if (!foundCategory) {
+      console.error("⚠️ Invalid or missing category:", category);
+      return res.status(404).json({
+        message: `Category not found or invalid ID: ${category}`,
+      });
+    }
+
+    // ✅ Image handling (safe defaults)
     let mainImage = "";
-    if (req.files?.mainImage?.length > 0) {
+    if (req.files && req.files.mainImage && req.files.mainImage.length > 0) {
       const file = req.files.mainImage[0];
       mainImage = file.path || file.secure_url || "";
     } else {
@@ -97,52 +114,95 @@ export const addTour = async (req, res) => {
     }
 
     const galleryImages =
-      req.files?.galleryImages?.length > 0
+      req.files && req.files.galleryImages && req.files.galleryImages.length > 0
         ? req.files.galleryImages.map((f) => f.path || f.secure_url || "")
         : [];
 
+    // ✅ Dates safety
+    const parsedStart = new Date(startDate);
+    const parsedEnd = new Date(endDate);
+    if (isNaN(parsedStart) || isNaN(parsedEnd)) {
+      return res
+        .status(400)
+        .json({ message: "Invalid startDate or endDate format." });
+    }
+
+    // ✅ Safe parsing helpers
+    const safeParse = (val, fallback = []) => {
+      if (!val) return fallback;
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : fallback;
+      } catch {
+        return typeof val === "string"
+          ? val.split(",").map((v) => v.trim()).filter(Boolean)
+          : fallback;
+      }
+    };
+
+    const safeParsePolicy = (policy) => {
+      if (!policy) return [];
+      try {
+        const parsed = JSON.parse(policy);
+        if (Array.isArray(parsed)) return parsed;
+        if (typeof parsed === "object") {
+          return Object.entries(parsed).map(([title, description]) => ({
+            title,
+            description,
+          }));
+        }
+        return [{ title: "Policy", description: policy }];
+      } catch {
+        return [{ title: "Policy", description: String(policy) }];
+      }
+    };
+
+    // ✅ Create tour
     const tour = new Tour({
       title,
-      slug: slugify(title, { lower: true }),
+      slug: slugify(title, { lower: true, strict: true }),
       description,
-      price,
+      price: Number(price),
       duration,
       category: foundCategory._id,
       mainImage,
       galleryImages,
-      highlights: parseArray(highlights),
-      inclusions: parseArray(inclusions),
-      exclusions: parseArray(exclusions),
+      highlights: safeParse(highlights),
+      inclusions: safeParse(inclusions),
+      exclusions: safeParse(exclusions),
       timings,
-      cancellationPolicy: parseCancellationPolicy(cancellationPolicy),
+      cancellationPolicy: safeParsePolicy(cancellationPolicy),
       location,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
-      maxGuests: maxGuests || 12,
+      startDate: parsedStart,
+      endDate: parsedEnd,
+      maxGuests: maxGuests ? Number(maxGuests) : 12,
       termsAndConditions: termsAndConditions || "",
-      relatedTours: parseArray(relatedTours),
+      relatedTours: safeParse(relatedTours),
     });
 
     await tour.save();
     console.log("✅ Tour saved successfully:", tour.title);
-    res.status(201).json({ message: "Tour added successfully", tour });
+    console.log("==================== ✅ ADD TOUR END ====================\n");
+
+    res.status(201).json({
+      message: "Tour added successfully",
+      tour,
+    });
   } catch (err) {
-    const plainError = `
-==================== ❌ ADD TOUR ERROR ❌ ====================
-MESSAGE: ${err?.message || "No message"}
-NAME: ${err?.name || "No name"}
-STACK: ${(err?.stack || "").split("\n").slice(0, 4).join("\n")}
-BODY: ${JSON.stringify(req.body, null, 2)}
-FILES: ${req.files ? Object.keys(req.files).join(", ") : "❌ No files"}
-=============================================================
-  `;
+  console.error("\n==================== ❌ ADD TOUR ERROR ❌ ====================");
+  console.error("🧨 Full Error Object:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+  console.error("📛 Message:", err?.message);
+  console.error("📂 Name:", err?.name);
+  console.error("📦 Stack:", err?.stack?.split("\n").slice(0, 5).join("\n"));
+  console.error("📤 Body snapshot:", JSON.stringify(req.body, null, 2));
+  console.error("============================================================\n");
 
-    // 🔥 Ye line Render pe 100% text print karegi
-    process.stdout.write(plainError + "\n");
-
-    // ✅ Also send back to frontend
-    return res.status(500).json({ message: err?.message || "Server Error" });
-  }
+  res.status(500).json({
+    error: true,
+    message: err?.message || "Server Error in addTour",
+    errorDetails: err,
+  });
+}
 };
 
 // 🟠 Update Tour

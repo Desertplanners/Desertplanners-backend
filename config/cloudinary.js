@@ -1,4 +1,3 @@
-// config/cloudinary.js
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
@@ -16,15 +15,31 @@ cloudinary.config({
 // 🧠 Debug print
 console.log("☁️ Connected to Cloudinary:", process.env.CLOUDINARY_CLOUD_NAME);
 
+// ✅ Helper: sanitize invalid chars for Cloudinary public_id
+const sanitizeFileName = (name) => {
+  return name
+    .normalize("NFD") // remove diacritics
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s-]/g, "") // remove anything not alphanumeric, space, dash, underscore
+    .replace(/\s+/g, "-") // replace spaces with dash
+    .replace(/-+/g, "-") // collapse multiple dashes
+    .trim()
+    .toLowerCase();
+};
+
+// ✅ Cloudinary storage config
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
-    // ✅ Dynamically decide folder
+    const baseName = file.originalname.split(".")[0];
+    const safeName = sanitizeFileName(baseName);
+
     return {
       folder: "desertplanners_uploads/tours",
       allowed_formats: ["jpg", "jpeg", "png", "webp"],
       resource_type: "image",
-      public_id: file.originalname.split(".")[0],
+      // 👇 Always add timestamp to avoid duplicates
+      public_id: `${safeName}-${Date.now()}`,
     };
   },
 });

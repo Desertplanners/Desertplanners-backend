@@ -62,7 +62,7 @@ const allowedOrigins = [
 ];
 
 // 🧠 Log check for debugging
-console.log("✅ Allowed Origins:", allowedOrigins);
+// console.log("✅ Allowed Origins:", allowedOrigins);
 
 app.use(
   cors({
@@ -99,7 +99,7 @@ app.get("/", (req, res) => {
 });
 
 // Debug ENV Test
-console.log("✅ ENV TEST FRONTEND_URL:", process.env.FRONTEND_URL);
+// console.log("✅ ENV TEST FRONTEND_URL:", process.env.FRONTEND_URL);
 console.log(
   "✅ ENV TEST MONGO_URI:",
   process.env.MONGO_URI ? "Loaded ✅" : "Missing ❌"
@@ -113,6 +113,13 @@ const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 console.log("📂 Serving uploads from:", path.join(__dirname, "uploads"));
 
+
+process.on("unhandledRejection", (reason, p) => {
+  console.error("💥 UNHANDLED REJECTION:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("💥 UNCAUGHT EXCEPTION:", err);
+});
 // ==========================
 // 🚀 HTTP + Socket.io setup
 // ==========================
