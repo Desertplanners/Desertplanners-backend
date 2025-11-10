@@ -326,13 +326,11 @@ export const getTourBySlug = async (req, res) => {
     const { slug } = req.params;
 
     const tour = await Tour.findOne({ slug })
-      // 🏷️ Main Tour Category
       .populate({
         path: "category",
         model: "Category",
         select: "name slug",
       })
-      // 🧭 Related Tours (with nested category)
       .populate({
         path: "relatedTours",
         model: "Tour",
@@ -344,9 +342,7 @@ export const getTourBySlug = async (req, res) => {
         },
       });
 
-    if (!tour) {
-      return res.status(404).json({ message: "Tour not found" });
-    }
+    if (!tour) return res.status(404).json({ message: "Tour not found" });
 
     res.json(tour);
   } catch (err) {
@@ -354,6 +350,7 @@ export const getTourBySlug = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 
 // 🔴 Delete tour

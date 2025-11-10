@@ -1,21 +1,23 @@
 import Category from "../models/categoryModel.js";
+import slugify from "slugify";
 
 // 🟢 Add new category
 export const addCategory = async (req, res) => {
   try {
     const { name } = req.body;
-
-    if (!name) {
+    if (!name)
       return res.status(400).json({ message: "Category name is required" });
-    }
 
     const existing = await Category.findOne({ name });
-    if (existing) {
+    if (existing)
       return res.status(400).json({ message: "Category already exists" });
-    }
 
-    const category = new Category({ name });
+    const category = new Category({
+      name,
+      slug: slugify(name, { lower: true, strict: true }),
+    });
     await category.save();
+
     res.status(201).json(category);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -32,44 +34,37 @@ export const getCategories = async (req, res) => {
   }
 };
 
-
-
-// 🟢 Delete category
-export const deleteCategory = async (req, res) => {
+// 🔵 Edit (Update) category — with slug regeneration
+export const editCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await Category.findByIdAndDelete(id);
+    const { name } = req.body;
+    if (!name)
+      return res.status(400).json({ message: "Category name is required" });
 
-    if (!deleted) {
+    const category = await Category.findById(id);
+    if (!category)
       return res.status(404).json({ message: "Category not found" });
-    }
 
-    res.json({ message: "Category deleted successfully" });
+    category.name = name;
+    category.slug = slugify(name, { lower: true, strict: true });
+    await category.save();
+
+    res.json(category);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
-// 🔵 Update (Edit) category
-export const editCategory = async (req, res) => {
+// 🟠 Delete category
+export const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name } = req.body;
-
-    if (!name) return res.status(400).json({ message: "Category name is required" });
-
-    const updated = await Category.findByIdAndUpdate(
-      id,
-      { name },
-      { new: true } // returns updated doc
-    );
-
-    if (!updated) {
+    const deleted = await Category.findByIdAndDelete(id);
+    if (!deleted)
       return res.status(404).json({ message: "Category not found" });
-    }
 
-    res.json(updated);
+    res.json({ message: "Category deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

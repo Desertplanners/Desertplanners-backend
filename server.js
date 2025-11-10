@@ -52,23 +52,25 @@ app.use(cookieParser());
 app.use(morgan("dev"));
 
 // ==========================
-// 🌍 Smart CORS Setup (Local + Render)
+// 🌍 Smart CORS Setup (Local + Production)
 // ==========================
-
-// 🧠 Allowed origins — both local + production
 const allowedOrigins = [
-  process.env.FRONTEND_URL,        // e.g. Vercel frontend
-  "http://localhost:5173",         // local React
-  "http://localhost:3000",         // optional local
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://desertplanners.vercel.app", // ✅ your Vercel frontend
+  "https://desertplanner-backend.onrender.com", // ✅ your Render backend (correct spelling)
 ];
 
-// 🛡️ CORS configuration
+// 🧠 Log check for debugging
+console.log("✅ Allowed Origins:", allowedOrigins);
+
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
       console.warn("❌ Blocked by CORS:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
@@ -76,7 +78,6 @@ app.use(
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
 );
-
 // ==========================
 // 🧭 Routes
 // ==========================
@@ -99,7 +100,10 @@ app.get("/", (req, res) => {
 
 // Debug ENV Test
 console.log("✅ ENV TEST FRONTEND_URL:", process.env.FRONTEND_URL);
-console.log("✅ ENV TEST MONGO_URI:", process.env.MONGO_URI ? "Loaded ✅" : "Missing ❌");
+console.log(
+  "✅ ENV TEST MONGO_URI:",
+  process.env.MONGO_URI ? "Loaded ✅" : "Missing ❌"
+);
 
 // ==========================
 // 📁 Serve Uploaded Files
@@ -124,7 +128,9 @@ const io = new Server(server, {
 
 io.on("connection", (socket) => {
   console.log("🟢 Client connected:", socket.id);
-  socket.on("disconnect", () => console.log("🔴 Client disconnected:", socket.id));
+  socket.on("disconnect", () =>
+    console.log("🔴 Client disconnected:", socket.id)
+  );
 });
 
 app.set("io", io);

@@ -19,10 +19,10 @@ const categorySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🧠 Automatically create slug from name before saving
+// 🧠 Automatically create slug before saving
 categorySchema.pre("save", function (next) {
   if (this.isModified("name") || !this.slug) {
-    this.slug = slugify(this.name, { lower: true });
+    this.slug = slugify(this.name, { lower: true, strict: true });
   }
   next();
 });
