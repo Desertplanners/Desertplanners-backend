@@ -1,10 +1,10 @@
 // ==========================
-// 🌍 Desert Planners Backend Server (FINAL FIXED VERSION)
+// 🌍 Desert Planners Backend Server (Universal Version)
 // ==========================
 
 // 🧩 Load environment variables FIRST
 import dotenv from "dotenv";
-dotenv.config(); // ✅ Ye sabse upar hona chahiye
+dotenv.config(); // ✅ Ye sabse pehle hona zaruri hai
 
 // ==========================
 // 🧱 Core Imports
@@ -34,8 +34,8 @@ import visaRoutes from "./routes/visaRoutes.js";
 import sectionRoutes from "./routes/sectionRoutes.js";
 import visaCategoryRoutes from "./routes/visaCategoryRoutes.js";
 
-// ✅ Now import Cloudinary (after dotenv is loaded)
-import "./config/cloudinary.js"; // just to ensure config loads before usage
+// ✅ Cloudinary Config (ensure it loads first)
+import "./config/cloudinary.js";
 
 // ==========================
 // 🟢 Connect Database
@@ -51,21 +51,25 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-// 🌍 Allowed Origins
+// ==========================
+// 🌍 Smart CORS Setup (Local + Render)
+// ==========================
+
+// 🧠 Allowed origins — both local + production
 const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "https://desertplanners.vercel.app",
-  "https://desetplanner-backend.onrender.com",
+  process.env.FRONTEND_URL,        // e.g. Vercel frontend
+  "http://localhost:5173",         // local React
+  "http://localhost:3000",         // optional local
 ];
 
-// 🛡️ CORS setup
+// 🛡️ CORS configuration
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
-      console.log("❌ Blocked by CORS:", origin);
+
+      console.warn("❌ Blocked by CORS:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
@@ -73,7 +77,9 @@ app.use(
   })
 );
 
+// ==========================
 // 🧭 Routes
+// ==========================
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
@@ -92,10 +98,11 @@ app.get("/", (req, res) => {
 });
 
 // Debug ENV Test
-console.log("✅ ENV TEST CLOUDINARY:", process.env.CLOUDINARY_CLOUD_NAME);
+console.log("✅ ENV TEST FRONTEND_URL:", process.env.FRONTEND_URL);
+console.log("✅ ENV TEST MONGO_URI:", process.env.MONGO_URI ? "Loaded ✅" : "Missing ❌");
 
 // ==========================
-// 📁 Serve uploaded files (local fallback)
+// 📁 Serve Uploaded Files
 // ==========================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -116,7 +123,7 @@ const io = new Server(server, {
 });
 
 io.on("connection", (socket) => {
-  console.log("🟢 New client connected:", socket.id);
+  console.log("🟢 Client connected:", socket.id);
   socket.on("disconnect", () => console.log("🔴 Client disconnected:", socket.id));
 });
 
