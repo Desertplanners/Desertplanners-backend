@@ -243,73 +243,62 @@ export const createPayment = async (req, res) => {
 // HANDLE WEBHOOK
 // ============================
 export const handleWebhook = async (req, res) => {
+  console.log("🔥 RAW BODY:", req.body);
+
+  let json;
+
   try {
-    console.log("🔥 Webhook Received RAW Body:", req.body);
-
-    // Convert RAW body buffer → string → JSON
-    let raw = req.body;
-
-    if (Buffer.isBuffer(raw)) {
-      raw = raw.toString("utf8");
-    }
-
-    const data = JSON.parse(raw);
-
-    console.log("🔍 Full Webhook Parsed:", data);
-
-    // Extract reference or fallback to orderId
-    const ref = data?.data?.reference || data?.data?.orderId;
-
-    if (!ref) {
-      console.log("❌ Webhook missing reference/orderId");
-      return res.status(400).send("ref missing");
-    }
-
-    // 🔥 PAYMENT SUCCESS
-    if (data.type === "payment.success") {
-      await Booking.findByIdAndUpdate(
-        ref,
-        {
-          status: "confirmed",
-          paymentStatus: "paid",
-        },
-        { new: true }
-      );
-
-      await Payment.findOneAndUpdate(
-        { bookingId: ref },
-        {
-          bookingId: ref,
-          status: "paid",
-          paymentInfo: data.data,
-        },
-        { upsert: true, new: true }
-      );
-
-      console.log("✅ Payment success (webhook):", ref);
-    }
-
-    // 🔥 PAYMENT FAILED
-    if (data.type === "payment.failed") {
-      await Booking.findByIdAndUpdate(ref, {
-        status: "cancelled",
-        paymentStatus: "failed",
-      });
-
-      await Payment.findOneAndUpdate(
-        { bookingId: ref },
-        { status: "failed" },
-        { upsert: true }
-      );
-
-      console.log("❌ Payment failed (webhook):", ref);
-    }
-
-    return res.status(200).send("ok");
+    // Paymennt sends raw Buffer → convert to string → JSON parse
+    const raw = req.body.toString("utf8");
+    json = JSON.parse(raw);
   } catch (err) {
-    console.error("❌ Webhook error:", err.message);
-    res.status(500).send("Webhook error");
+    console.log("❌ JSON PARSE FAILED:", err.message);
+    return res.status(400).send("Invalid JSON");
   }
+
+  console.log("🔥 Parsed Webhook Data:", json);
+
+  const ref = json?.data?.reference;
+
+  if (!ref) {
+    console.log("❌ Reference missing in webhook");
+    return res.status(400).send("reference missing");
+  }
+
+  // SUCCESS
+  if (json.type === "payment.success") {
+    await Booking.findByIdAndUpdate(
+      ref,
+      { status: "confirmed", paymentStatus: "paid" },
+      { new: true }
+    );
+
+    await Payment.findOneAndUpdate(
+      { bookingId: ref },
+      { status: "paid", paymentInfo: json.data },
+      { upsert: true }
+    );
+
+    console.log("✅ Payment SUCCESS updated:", ref);
+  }
+
+  // FAILED
+  if (json.type === "payment.failed") {
+    await Booking.findByIdAndUpdate(
+      ref,
+      { status: "cancelled", paymentStatus: "failed" }
+    );
+
+    await Payment.findOneAndUpdate(
+      { bookingId: ref },
+      { status: "failed" },
+      { upsert: true }
+    );
+
+    console.log("❌ Payment FAILED updated:", ref);
+  }
+
+  return res.status(200).send("ok");
 };
 
 
