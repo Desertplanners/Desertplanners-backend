@@ -47,7 +47,7 @@ connectDB();
 // ⚙️ Express App Setup
 // ==========================
 const app = express();
-// app.use("/api/payment/webhook", express.raw({ type: "*/*" }));
+app.use("/api/payment/webhook", express.raw({ type: "*/*" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

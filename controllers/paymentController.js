@@ -244,6 +244,7 @@ export const createPayment = async (req, res) => {
 // ============================
 export const handleWebhook = async (req, res) => {
   try {
+        console.log("🔥 Webhook Received RAW Body:", req.body);
     const data = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
     const ref = data?.data?.reference;
