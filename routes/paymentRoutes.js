@@ -12,7 +12,8 @@ const router = express.Router();
 router.post("/create", createPayment);
 
 // ✅ Webhook from Paymennt (for live mode)
-router.post("/webhook", express.raw({ type: "*/*" }), handleWebhook);
+// router.post("/webhook", express.raw({ type: "*/*" }), handleWebhook);
+router.post("/webhook", express.urlencoded({ extended: true }), handleWebhook);
 
 
 // ✅ Temporary manual confirm (for local testing)

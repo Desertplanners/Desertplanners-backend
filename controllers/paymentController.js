@@ -243,63 +243,44 @@ export const createPayment = async (req, res) => {
 // HANDLE WEBHOOK
 // ============================
 export const handleWebhook = async (req, res) => {
-  console.log("🔥 RAW BODY:", req.body);
-
-  let json;
-
   try {
-    // Paymennt sends raw Buffer → convert to string → JSON parse
-    const raw = req.body.toString("utf8");
-    json = JSON.parse(raw);
+    console.log("🔥 WEBHOOK BODY:", req.body);
+
+    const data = req.body; // form-data already parsed by express.urlencoded()
+
+    const status = data.status;
+    const ref = data.orderId;  // Paymennt ALWAYS sends orderId for reference
+
+    if (!ref) {
+      console.log("❌ No orderId in webhook");
+      return res.status(400).send("orderId missing");
+    }
+
+    if (status === "PAID") {
+      await Booking.findByIdAndUpdate(ref, {
+        status: "confirmed",
+        paymentStatus: "paid",
+      });
+
+      console.log("✅ PAYMENT SUCCESS UPDATED:", ref);
+    }
+
+    if (status === "FAILED") {
+      await Booking.findByIdAndUpdate(ref, {
+        status: "cancelled",
+        paymentStatus: "failed",
+      });
+
+      console.log("❌ PAYMENT FAILED UPDATED:", ref);
+    }
+
+    return res.status(200).send("ok");
   } catch (err) {
-    console.log("❌ JSON PARSE FAILED:", err.message);
-    return res.status(400).send("Invalid JSON");
+    console.error("❌ Webhook error:", err);
+    return res.status(500).send("err");
   }
-
-  console.log("🔥 Parsed Webhook Data:", json);
-
-  const ref = json?.data?.reference;
-
-  if (!ref) {
-    console.log("❌ Reference missing in webhook");
-    return res.status(400).send("reference missing");
-  }
-
-  // SUCCESS
-  if (json.type === "payment.success") {
-    await Booking.findByIdAndUpdate(
-      ref,
-      { status: "confirmed", paymentStatus: "paid" },
-      { new: true }
-    );
-
-    await Payment.findOneAndUpdate(
-      { bookingId: ref },
-      { status: "paid", paymentInfo: json.data },
-      { upsert: true }
-    );
-
-    console.log("✅ Payment SUCCESS updated:", ref);
-  }
-
-  // FAILED
-  if (json.type === "payment.failed") {
-    await Booking.findByIdAndUpdate(
-      ref,
-      { status: "cancelled", paymentStatus: "failed" }
-    );
-
-    await Payment.findOneAndUpdate(
-      { bookingId: ref },
-      { status: "failed" },
-      { upsert: true }
-    );
-
-    console.log("❌ Payment FAILED updated:", ref);
-  }
-
-  return res.status(200).send("ok");
 };
+
 
 
 // ============================
