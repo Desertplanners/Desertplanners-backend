@@ -16,7 +16,6 @@ export const createVisaPayment = async (req, res) => {
       });
     }
 
-    // 🔍 Visa booking fetch
     const booking = await VisaBooking.findById(bookingId);
 
     if (!booking) {
@@ -27,16 +26,18 @@ export const createVisaPayment = async (req, res) => {
     }
 
     const totalAmount = Number(booking.totalPrice || 0);
+    if (!totalAmount || totalAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid visa booking amount. Amount must be greater than 0.",
+      });
+    }
 
-    // --------------------
-    // PAYMENT PAYLOAD
-    // --------------------
     const payload = {
       requestId: `REQ-VISA-${booking._id}`,
       orderId: booking._id.toString(),
       currency: "AED",
       amount: totalAmount,
-
       totals: {
         subtotal: totalAmount,
         tax: 0,
@@ -45,17 +46,15 @@ export const createVisaPayment = async (req, res) => {
         discount: 0,
         skipTotalsValidation: true,
       },
-
       items: [
         {
-          name: booking.visaType || "Visa Application",
+          name: booking.visaType || booking.visaTitle || "Visa Application",
           sku: `VISA-${booking._id}`,
           unitprice: totalAmount,
           quantity: 1,
           linetotal: totalAmount,
         },
       ],
-
       customer: {
         id: booking._id.toString(),
         firstName: booking.fullName?.split(" ")[0] || "Guest",
@@ -63,9 +62,8 @@ export const createVisaPayment = async (req, res) => {
         email: booking.email,
         phone: booking.phone,
       },
-
       billingAddress: {
-        name: booking.fullName,
+        name: booking.fullName || "Customer",
         address1: "Dubai",
         address2: "",
         city: "Dubai",
@@ -74,9 +72,8 @@ export const createVisaPayment = async (req, res) => {
         country: "AE",
         set: true,
       },
-
       deliveryAddress: {
-        name: booking.fullName,
+        name: booking.fullName || "Customer",
         address1: "Dubai",
         address2: "",
         city: "Dubai",
@@ -85,15 +82,10 @@ export const createVisaPayment = async (req, res) => {
         country: "AE",
         set: true,
       },
-
-      // VISA SUCCESS PAGE
       returnUrl: `${process.env.FRONTEND_URL}/visa-success?bookingId=${booking._id}`,
       language: "EN",
     };
 
-    // --------------------
-    // CALL PAYMENNT API
-    // --------------------
     const response = await axios.post(
       process.env.PAYMENNT_API_URL,
       payload,
@@ -106,12 +98,30 @@ export const createVisaPayment = async (req, res) => {
       }
     );
 
+    const gatewayData = response.data || {};
+
+    // Create Payment record (pending)
+    const paymentDoc = new Payment({
+      bookingId: booking._id,
+      transactionId: gatewayData?.result?.id || gatewayData?.id || null,
+      amount: totalAmount,
+      currency: "AED",
+      status: "pending",
+      paymentInfo: gatewayData,
+      method: "checkout",
+      gateway: "Paymennt",
+    });
+
+    await paymentDoc.save();
+
     return res.status(200).json({
       success: true,
-      paymentLink: response.data?.result?.redirectUrl,
-      raw: response.data,
+      paymentLink: gatewayData?.result?.redirectUrl || null,
+      payment: paymentDoc,
+      raw: gatewayData,
     });
   } catch (err) {
+    console.error("❌ createVisaPayment error:", err);
     return res.status(500).json({
       success: false,
       error: err.response?.data || err.message,
@@ -119,16 +129,15 @@ export const createVisaPayment = async (req, res) => {
   }
 };
 
-
 // ============================
 // VISA WEBHOOK
 // ============================
 export const visaPaymentWebhook = async (req, res) => {
   try {
     const data = req.body;
-
     const status = data.status;
     const bookingId = data.orderId;
+    const gatewayTxnId = data.id || data.transactionId || null;
 
     if (!bookingId) {
       return res.status(400).send("Missing visa booking id");
@@ -139,6 +148,21 @@ export const visaPaymentWebhook = async (req, res) => {
         paymentStatus: "paid",
         status: "confirmed",
       });
+
+      await Payment.findOneAndUpdate(
+        { bookingId: bookingId, transactionId: gatewayTxnId || undefined },
+        {
+          bookingId: bookingId,
+          transactionId: gatewayTxnId,
+          amount: Number(data.amount || data.total || 0) || undefined,
+          currency: data.currency || "AED",
+          status: "paid",
+          paymentInfo: data,
+          method: "checkout",
+          gateway: "Paymennt",
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
     }
 
     if (status === "FAILED") {
@@ -146,6 +170,21 @@ export const visaPaymentWebhook = async (req, res) => {
         paymentStatus: "failed",
         status: "cancelled",
       });
+
+      await Payment.findOneAndUpdate(
+        { bookingId: bookingId, transactionId: gatewayTxnId || undefined },
+        {
+          bookingId: bookingId,
+          transactionId: gatewayTxnId,
+          amount: Number(data.amount || data.total || 0) || undefined,
+          currency: data.currency || "AED",
+          status: "failed",
+          paymentInfo: data,
+          method: "checkout",
+          gateway: "Paymennt",
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
     }
 
     return res.status(200).send("ok");
@@ -154,7 +193,6 @@ export const visaPaymentWebhook = async (req, res) => {
     return res.status(500).send("err");
   }
 };
-
 
 // ============================
 // MANUAL VISA PAYMENT CONFIRM
@@ -179,15 +217,32 @@ export const manualConfirmVisaPayment = async (req, res) => {
       });
     }
 
+    const paymentDoc = new Payment({
+      bookingId: booking._id,
+      transactionId: `MANUAL-VISA-${Date.now()}`,
+      amount: booking.totalPrice || 0,
+      currency: "AED",
+      status: "paid",
+      paymentInfo: { manual: true },
+      method: "manual",
+      gateway: "internal",
+    });
+
+    await paymentDoc.save();
+
     return res.status(200).json({
       success: true,
       message: "Visa booking manually confirmed",
       booking,
+      payment: paymentDoc,
     });
   } catch (err) {
+    console.error("❌ manualConfirmVisaPayment error:", err);
     return res.status(500).json({
       success: false,
       message: "Manual confirmation error",
     });
   }
 };
+
+

@@ -3,24 +3,25 @@ import express from "express";
 import {
   createPayment,
   handleWebhook,
-  manualConfirmPayment, // 👈 added for local testing
+  manualConfirmPayment,
+  getAllTourPayments, // ⭐ COMBINED LIST (tour + visa)
 } from "../controllers/paymentController.js";
 
 const router = express.Router();
 
-// ✅ Create payment (after booking created)
+// Tour Payment Create
 router.post("/create", createPayment);
 
-// ✅ Webhook from Paymennt (for live mode)
-// router.post("/webhook", express.raw({ type: "*/*" }), handleWebhook);
+// Tour Webhook
 router.post("/webhook", express.urlencoded({ extended: true }), handleWebhook);
 
-
-// ✅ Temporary manual confirm (for local testing)
+// Manual confirm (local)
 router.put("/confirm/:bookingId", manualConfirmPayment);
 
+// ⭐ FINAL: Combined Payments List
+router.get("/all", getAllTourPayments);
 
-// ⭐ TEMPORARY: CREATE WEBHOOK FROM RENDER SERVER
+// Create Paymennt Webhook (TEMP)
 router.get("/create-webhook", async (req, res) => {
   try {
     const result = await axios.post(
@@ -45,4 +46,5 @@ router.get("/create-webhook", async (req, res) => {
       .json(err.response?.data || { message: err.message });
   }
 });
+
 export default router;
