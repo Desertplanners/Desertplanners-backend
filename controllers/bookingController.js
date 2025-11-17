@@ -13,7 +13,6 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // 🟢 Create Booking (Guest + Logged-in User)
 
-
 export const createBooking = async (req, res) => {
   try {
     const {
@@ -54,7 +53,7 @@ export const createBooking = async (req, res) => {
       const itemTotal = adultPrice * adultCount + childPrice * childCount;
       subtotal += itemTotal;
 
-      // 🚫 pickup/drop per-item nahi hona chahiye  
+      // 🚫 pickup/drop per-item nahi hona chahiye
       processedItems.push({
         tourId: item.tourId,
         date: item.date,
@@ -79,8 +78,8 @@ export const createBooking = async (req, res) => {
       subtotal,
       transactionFee,
       totalPrice: finalTotal,
-      pickupPoint,       // FIXED
-      dropPoint,         // FIXED
+      pickupPoint, // FIXED
+      dropPoint, // FIXED
       specialRequest,
       status: "pending",
       paymentStatus: "pending",
@@ -131,7 +130,7 @@ export const createBooking = async (req, res) => {
         <ul>${bookingDetails}</ul>
         <hr/>
         <p><b>Subtotal:</b> AED ${subtotal}</p>
-        <p><b>Transaction Fee (3.75%):</b> AED ${transactionFee}</p>
+        <p><b>Transaction Fee :</b> AED ${transactionFee}</p>
         <p><b>Total Payable:</b> AED ${finalTotal}</p>
         <p><b>Booking ID:</b> ${booking._id}</p>
       </div>
@@ -149,7 +148,6 @@ export const createBooking = async (req, res) => {
       message: "Booking successful",
       booking,
     });
-
   } catch (err) {
     console.error("❌ Error creating booking:", err);
     return res.status(500).json({
@@ -218,7 +216,7 @@ export const getMyBookings = async (req, res) => {
   }
 };
 
-export const lookupBooking = async (req, res) => {  
+export const lookupBooking = async (req, res) => {
   try {
     const { bookingId, email } = req.query;
 
@@ -273,131 +271,298 @@ export const downloadInvoice = async (req, res) => {
 
     res.setHeader(
       "Content-disposition",
-      `attachment; filename=invoice-${booking._id}.pdf`
+      `attachment; filename=tour-invoice-${booking._id}.pdf`
     );
     res.setHeader("Content-type", "application/pdf");
 
     doc.pipe(res);
 
-    // HEADER
-    doc.rect(0, 0, 595, 120).fill("#f1f5f9");
+    // =====================================================
+    // HEADER (Soft Gradient)
+    // =====================================================
+    const headerBand = doc.linearGradient(0, 0, 595, 120);
+    headerBand.stop(0, "#e0f2fe").stop(1, "#f0f9ff");
 
+    doc.rect(0, 0, 595, 120).fill(headerBand);
+
+    // Logo
     try {
-      const logo = path.join(process.cwd(), "public", "desertplanners_logo.png");
-      doc.image(logo, 40, 30, { width: 140 });
+      const logoPath = path.resolve("public/desertplanners_logo.png");
+      doc.image(logoPath, 40, 32, { width: 120 });
     } catch (err) {}
 
-    const X = 330;
+    // Header Right
+    const hdrX = 330;
+    const hdrW = 220;
+
     doc
-      .fill("#1e293b")
+      .fill("#0f172a")
       .font("Helvetica-Bold")
       .fontSize(26)
-      .text("BOOKING RECEIPT", X, 35);
+      .text("TOUR INVOICE", hdrX, 30, { width: hdrW, align: "right" });
 
     doc
       .font("Helvetica")
       .fontSize(11)
-      .fill("#475569")
-      .text(`Invoice ID: ${booking._id}`, X, 75)
-      .text(`Payment Status: ${booking.paymentStatus}`, X, 92)
-      .text(`Date: ${new Date(booking.createdAt).toLocaleString()}`, X, 110);
+      .fill("#334155")
+      .text(`Invoice ID: ${booking._id}`, hdrX, 70, { width: hdrW, align: "right" })
+      .text(`Payment: ${booking.paymentStatus}`, hdrX, 88, {
+        width: hdrW,
+        align: "right",
+      })
+      .text(`Date: ${new Date(booking.createdAt).toLocaleDateString()}`, hdrX, 106, {
+        width: hdrW,
+        align: "right",
+      });
 
-    // MAIN CARD
-    doc.roundedRect(30, 140, 535, 690, 14).fill("#fff").stroke("#e2e8f0");
-
-    let y = 170;
-
+    // =====================================================
     // FROM + BILL TO
-    doc.font("Helvetica-Bold").fontSize(14).fill("#3b82f6").text("From", 50, y);
+    // =====================================================
+    let y = 160;
+
+    doc.fill("#0ea5e9").font("Helvetica-Bold").fontSize(15).text("FROM", 50, y);
 
     doc
       .font("Helvetica")
       .fontSize(11)
-      .fill("#475569")
-      .text("Desert Planners Tourism LLC", 50, y + 20)
-      .text("Dubai, UAE", 50, y + 35)
-      .text("info@desertplanners.net", 50, y + 50)
-      .text("+97143546677", 50, y + 65);
+      .fill("#334155")
+      .text("Desert Planners Tourism LLC", 50, y + 22)
+      .text("Dubai, UAE", 50, y + 38)
+      .text("info@desertplanners.net", 50, y + 54)
+      .text("+971 4354 6677", 50, y + 70);
+
+    // Bill To (Right with 25px padding)
+    const billX = 330;
+    const billWidth = 215;
+
+    doc
+      .fill("#0ea5e9")
+      .font("Helvetica-Bold")
+      .fontSize(15)
+      .text("BILL TO", billX, y, { width: billWidth, align: "right" });
+
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .fill("#334155")
+      .text(booking.guestName || booking.userName, billX, y + 22, {
+        width: billWidth,
+        align: "right",
+      })
+      .text(booking.guestEmail || booking.userEmail, billX, y + 38, {
+        width: billWidth,
+        align: "right",
+      })
+      .text(booking.guestContact || "—", billX, y + 54, {
+        width: billWidth,
+        align: "right",
+      });
+
+    // =====================================================
+    // 🌟 MODERN TOUR SUMMARY TABLE
+    // =====================================================
+    let tableY = y + 120;
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(18)
+      .fill("#0f172a")
+      .text("Tour Summary", 50, tableY);
+
+    tableY += 35;
+
+    // Header Bar
+    doc.roundedRect(45, tableY, 500, 38, 12).fill("#eef6ff").stroke("#cfe0f6");
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .fill("#0f172a")
+      .text("Tour", 60, tableY + 12)
+      .text("Guests", 240, tableY + 12)
+      .text("Unit Price", 350, tableY + 12)
+      .text("Total", 470, tableY + 12, { width: 60, align: "right" });
+
+    tableY += 45;
+
+    const safeItems = Array.isArray(booking.items) ? booking.items : [];
+    const rowHeight = 52;
+
+    safeItems.forEach((item, index) => {
+      const rowY = tableY + index * rowHeight;
+
+      doc
+        .save()
+        .roundedRect(45, rowY, 500, rowHeight - 8, 10)
+        .fill(index % 2 === 0 ? "#ffffff" : "#f9fbff")
+        .restore();
+
+      const tourName = item?.tourId?.title || "Tour";
+      const adultCount = Number(item?.adultCount || 0);
+      const childCount = Number(item?.childCount || 0);
+      const adultPrice = Number(item?.adultPrice || 0);
+      const childPrice = Number(item?.childPrice || 0);
+
+      const qtyText =
+        adultCount > 0 || childCount > 0
+          ? `${adultCount} Adult${adultCount > 1 ? "s" : ""}${
+              childCount > 0 ? `, ${childCount} Child` : ""
+            }`
+          : "0 Guests";
+
+      const priceText =
+        childCount > 0
+          ? `A: ${adultPrice} / C: ${childPrice}`
+          : `AED ${adultPrice}`;
+
+      const totalAmount = adultPrice * adultCount + childPrice * childCount;
+
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(11)
+        .fill("#0f172a")
+        .text(`•  ${tourName}`, 60, rowY + 14);
+
+      doc
+        .font("Helvetica")
+        .fontSize(10)
+        .fill("#334155")
+        .text(qtyText, 240, rowY + 14);
+
+      doc
+        .font("Helvetica")
+        .fontSize(10)
+        .fill("#334155")
+        .text(priceText, 350, rowY + 14);
+
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(13)
+        .fill("#0ea5e9")
+        .text(`AED ${totalAmount}`, 470, rowY + 12, {
+          width: 60,
+          align: "right",
+        });
+    });
+
+    tableY += safeItems.length * rowHeight;
+
+    // =====================================================
+    // 🌟 PREMIUM TOTALS SUMMARY BOX
+    // =====================================================
+    const invSubtotal = Number(booking.subtotal || 0);
+    const invFee = Number(booking.transactionFee || 0);
+    const invGrandTotal = Number(booking.totalPrice || 0);
+
+    let totalsBoxStartY = tableY + 60;
+
+    // Total Box Background
+    doc
+      .roundedRect(45, totalsBoxStartY, 500, 155, 16)
+      .fill("#f9fbff")
+      .stroke("#dbeafe");
+
+    // Top Gradient Bar
+    const totalsHeaderBar = doc.linearGradient(
+      45,
+      totalsBoxStartY,
+      545,
+      totalsBoxStartY + 40
+    );
+    totalsHeaderBar.stop(0, "#e0f2fe").stop(1, "#f0f9ff");
+
+    doc
+      .roundedRect(45, totalsBoxStartY, 500, 40, 16)
+      .fill(totalsHeaderBar)
+      .stroke("#cfe0f6");
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(15)
+      .fill("#0f172a")
+      .text("Payment Summary", 60, totalsBoxStartY + 12);
+
+    // Lines
+    let totalsLineY = totalsBoxStartY + 55;
+
+    // Subtotal
+    doc.font("Helvetica").fontSize(12).fill("#475569").text("Subtotal", 60, totalsLineY);
 
     doc
       .font("Helvetica-Bold")
       .fontSize(14)
-      .fill("#3b82f6")
-      .text("Bill To", 330, y);
+      .fill("#0284c7")
+      .text(`AED ${invSubtotal.toFixed(2)}`, 300, totalsLineY - 2, {
+        width: 200,
+        align: "right",
+      });
 
+    totalsLineY += 28;
+
+    // Transaction Fee
     doc
       .font("Helvetica")
-      .fontSize(11)
+      .fontSize(12)
       .fill("#475569")
-      .text(booking.guestName || booking.userName, 330, y + 20)
-      .text(booking.guestEmail || booking.userEmail, 330, y + 35)
-      .text(booking.guestContact || "—", 330, y + 50);
-
-    // TABLE HEADER
-    y += 120;
+      .text("Transaction Fee ", 60, totalsLineY);
 
     doc
       .font("Helvetica-Bold")
-      .fontSize(12)
-      .fill("#1e293b")
-      .text("Description", 50, y)
-      .text("Qty", 260, y)
-      .text("Price", 360, y)
-      .text("Amount", 460, y);
+      .fontSize(14)
+      .fill("#0284c7")
+      .text(`AED ${invFee.toFixed(2)}`, 300, totalsLineY - 2, {
+        width: 200,
+        align: "right",
+      });
 
-    doc.moveTo(50, y + 18).lineTo(550, y + 18).stroke("#e2e8f0");
+    totalsLineY += 35;
 
-    // TABLE ROWS
-    y += 30;
+    doc.moveTo(60, totalsLineY).lineTo(525, totalsLineY).stroke("#dbeafe");
 
-    booking.items.forEach((item, i) => {
-      const rowBg = i % 2 === 0 ? "#f8fafc" : "#ffffff";
+    totalsLineY += 18;
 
-      doc.save().fill(rowBg).rect(50, y - 10, 500, 28).fill().restore();
-
-      const qty = item.adultCount + item.childCount;
-      const amount =
-        item.adultCount * item.adultPrice + item.childCount * item.childPrice;
-
-      doc
-        .font("Helvetica")
-        .fontSize(11)
-        .fill("#1e293b")
-        .text(item.tourId?.title, 55, y)
-        .text(qty, 260, y)
-        .text(`AED ${item.adultPrice}`, 360, y)
-        .text(`AED ${amount}`, 460, y);
-
-      y += 30;
-    });
-
-    // ==========================
-    // UPDATED TOTAL SUMMARY CARD
-    // ==========================
-
-    y += 30;
-
-    doc.roundedRect(320, y, 200, 110, 12).fill("#eef6ff").stroke("#bfdbfe");
-
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(12)
-      .fill("#1e293b")
-      .text(`Subtotal: AED ${booking.subtotal}`, 335, y + 10);
-
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .fill("#1e293b")
-      .text(`Fee (3.75%): AED ${booking.transactionFee}`, 335, y + 35);
-
+    // Grand Total
     doc
       .font("Helvetica-Bold")
       .fontSize(16)
-      .fill("#3b82f6")
-      .text(`Total: AED ${booking.totalPrice}`, 335, y + 65);
+      .fill("#0f172a")
+      .text("Total Payable", 60, totalsLineY);
 
-    // FOOTER
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(22)
+      .fill("#0ea5e9")
+      .text(`AED ${invGrandTotal.toFixed(2)}`, 300, totalsLineY - 6, {
+        width: 200,
+        align: "right",
+      });
+
+    // =====================================================
+    // FOOTER (FIXED)
+    // =====================================================
+    let footerY = totalsLineY + 80;
+
+    if (footerY > doc.page.height - 90) {
+      footerY = doc.page.height - 90;
+    }
+
+    doc.moveTo(45, footerY).lineTo(545, footerY).stroke("#e2e8f0");
+
+    doc
+      .roundedRect(45, footerY + 5, 500, 45, 10)
+      .fillOpacity(0.15)
+      .fill("#e2e8f0")
+      .strokeOpacity(0.3)
+      .stroke("#cbd5e1");
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(11)
+      .fill("#334155")
+      .text("Thank you for choosing Desert Planners Tourism", 0, footerY + 12, {
+        align: "center",
+      });
+
     doc
       .font("Helvetica")
       .fontSize(10)
@@ -405,13 +570,13 @@ export const downloadInvoice = async (req, res) => {
       .text(
         "This invoice is auto-generated and does not require a signature.",
         0,
-        810,
+        footerY + 28,
         { align: "center" }
       );
 
     doc.end();
-
   } catch (err) {
+    console.log("Invoice Error:", err);
     res.status(500).json({ message: "Invoice failed" });
   }
 };
