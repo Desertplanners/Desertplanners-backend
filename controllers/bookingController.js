@@ -309,166 +309,187 @@ export const lookupBooking = async (req, res) => {
   }
 };
 
-
-
 export const downloadInvoice = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id)
-      .populate("items.tourId", "title");
+    const booking = await Booking.findById(req.params.id).populate(
+      "items.tourId",
+      "title"
+    );
 
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-    const doc = new PDFDocument({
-      size: "A4",
-      margin: 40,
-    });
-
-    let filename = `invoice-${booking._id}.pdf`;
-    res.setHeader("Content-disposition", `attachment; filename=${filename}`);
+    const doc = new PDFDocument({ size: "A4", margin: 0 });
+    res.setHeader(
+      "Content-disposition",
+      `attachment; filename=invoice-${booking._id}.pdf`
+    );
     res.setHeader("Content-type", "application/pdf");
     doc.pipe(res);
 
-    // ----------------------------------
-    // 🔥 Load Logo
-    // ----------------------------------
-    const logoPath = path.resolve("public/desertplanners_logo.png");
-    doc.image(logoPath, 40, 30, { width: 120 });
+    // ==========================
+    // LIGHT PREMIUM HEADER
+    // ==========================
+    // =============================
+    // PERFECT PREMIUM HEADER
+    // =============================
+    doc.rect(0, 0, 595, 120).fill("#f1f5f9"); // light header background
 
-    // ----------------------------------
-    // 🔥 Receipt Heading + Invoice Info
-    // ----------------------------------
+    // ---- LOGO LEFT ----
+    try {
+      const logoPath = path.join(
+        process.cwd(),
+        "public",
+        "desertplanners_logo.png"
+      );
+      doc.image(logoPath, 40, 30, { width: 140 });
+    } catch {}
+
+    // ---- RIGHT HEADER CONTENT (PERFECT ALIGNED) ----
+
+    // FIXED POSITION (x=330)
+    const headerX = 330;
+
     doc
+      .fill("#1e293b")
       .font("Helvetica-Bold")
-      .fontSize(22)
-      .fill("#1a1a1a")
-      .text("BOOKING RECEIPT", 0, 40, { align: "right" });
+      .fontSize(26)
+      .text("BOOKING RECEIPT", headerX, 35); // title position
 
     doc
       .font("Helvetica")
       .fontSize(11)
-      .fill("#555")
-      .text(`Invoice ID: ${booking._id}`, 0, 70, { align: "right" })
-      .text(`Payment Status: ${booking.paymentStatus}`, { align: "right" })
+      .fill("#475569")
+      .text(`Invoice ID: ${booking._id}`, headerX, 75)
+      .text(`Payment Status: ${booking.paymentStatus}`, headerX, 92)
       .text(
         `Date: ${new Date(booking.createdAt).toLocaleString()}`,
-        { align: "right" }
+        headerX,
+        110
       );
 
-    // ----------------------------------
-    // 🔥 FROM + BILL TO section
-    // ----------------------------------
-    let y = 140;
+    // ==========================
+    // MAIN CONTENT CARD
+    // ==========================
+    doc.roundedRect(30, 140, 535, 690, 14).fill("#ffffff").stroke("#e2e8f0");
 
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(14)
-      .fill("#1a1a1a")
-      .text("FROM", 40, y);
+    let y = 170;
 
-    doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fill("#333")
-      .text("Desert Planners Tourism LLC", 40, y + 20)
-      .text("Dubai, UAE", 40, y + 35)
-      .text("info@desertplanners.net", 40, y + 50)
-      .text("+971-50-0000000", 40, y + 65);
-
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(14)
-      .fill("#1a1a1a")
-      .text("BILL TO", 320, y);
+    // ==========================
+    // FROM + BILL TO SECTION
+    // ==========================
+    doc.font("Helvetica-Bold").fontSize(14).fill("#3b82f6").text("From", 50, y);
 
     doc
       .font("Helvetica")
       .fontSize(11)
-      .fill("#333")
-      .text(booking.guestName || booking.userName, 320, y + 20)
-      .text(booking.guestEmail || booking.userEmail, 320, y + 35)
-      .text(booking.guestContact || "---", 320, y + 50);
-
-    // ----------------------------------
-    // 🔥 BIG AMOUNT BOX
-    // ----------------------------------
-    doc
-      .roundedRect(40, y + 110, 515, 70, 10)
-      .fill("#f3f3f3");
+      .fill("#475569")
+      .text("Desert Planners Tourism LLC", 50, y + 20)
+      .text("Dubai, UAE", 50, y + 35)
+      .text("info@desertplanners.net", 50, y + 50)
+      .text("+97143546677", 50, y + 65);
 
     doc
       .font("Helvetica-Bold")
-      .fontSize(28)
-      .fill("#e82429")
-      .text(`AED ${booking.totalPrice}`, 50, y + 130);
+      .fontSize(14)
+      .fill("#3b82f6")
+      .text("Bill To", 330, y);
 
     doc
       .font("Helvetica")
+      .fontSize(11)
+      .fill("#475569")
+      .text(booking.guestName || booking.userName, 330, y + 20)
+      .text(booking.guestEmail || booking.userEmail, 330, y + 35)
+      .text(booking.guestContact || "—", 330, y + 50);
+
+    // ==========================
+    // TABLE HEADER
+    // ==========================
+    y += 120;
+
+    doc
+      .font("Helvetica-Bold")
       .fontSize(12)
-      .fill("#333")
-      .text("Total Amount Paid", 50, y + 160);
-
-    // ----------------------------------
-    // 🔥 DESCRIPTION TABLE HEADER
-    // ----------------------------------
-    y = y + 210;
+      .fill("#1e293b")
+      .text("Description", 50, y)
+      .text("Qty", 260, y)
+      .text("Price", 360, y)
+      .text("Amount", 460, y);
 
     doc
-      .font("Helvetica-Bold")
-      .fontSize(13)
-      .fill("#000")
-      .text("DESCRIPTION", 40, y)
-      .text("QTY", 260, y)
-      .text("UNIT PRICE", 340, y)
-      .text("AMOUNT", 450, y);
-
-    doc
-      .moveTo(40, y + 18)
+      .moveTo(50, y + 18)
       .lineTo(550, y + 18)
-      .stroke("#bbb");
+      .stroke("#e2e8f0");
 
-    // ----------------------------------
-    // 🔥 DESCRIPTION TABLE ROWS
-    // ----------------------------------
-    y += 35;
+    // ==========================
+    // TABLE ROWS (Clean + Light)
+    // ==========================
+    y += 30;
 
-    booking.items.forEach((item) => {
-      const totalItem =
-        item.adultCount * item.adultPrice +
-        item.childCount * item.childPrice;
+    booking.items.forEach((item, i) => {
+      const bg = i % 2 === 0 ? "#f8fafc" : "#ffffff";
+
+      doc
+        .save()
+        .fill(bg)
+        .rect(50, y - 10, 500, 28)
+        .fill()
+        .restore();
+
+      const qty = item.adultCount + item.childCount;
+      const amount =
+        item.adultCount * item.adultPrice + item.childCount * item.childPrice;
 
       doc
         .font("Helvetica")
         .fontSize(11)
-        .fill("#333")
-        .text(item.tourId?.title, 40, y, { width: 200 })
-        .text(item.adultCount + item.childCount, 260, y)
-        .text(`AED ${item.adultPrice}`, 340, y)
-        .text(`AED ${totalItem}`, 450, y);
+        .fill("#1e293b")
+        .text(item.tourId?.title, 55, y, { width: 200 })
+        .text(qty, 260, y)
+        .text(`AED ${item.adultPrice}`, 360, y)
+        .text(`AED ${amount}`, 460, y);
 
-      y += 25;
+      y += 30;
     });
 
-    // ----------------------------------
-    // 🔥 Footer Note
-    // ----------------------------------
+    // ==========================
+    // TOTAL AMOUNT (Light Blue Card)
+    // ==========================
+    y += 30;
+
+    doc
+      .roundedRect(320, y, 200, 80, 12)
+      .fill("#eef6ff") // light cool blue
+      .stroke("#bfdbfe");
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(20)
+      .fill("#3b82f6")
+      .text(`AED ${booking.totalPrice}`, 335, y + 18);
+
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .fill("#475569")
+      .text("Total Amount", 335, y + 48);
+
+    // ==========================
+    // FOOTER
+    // ==========================
     doc
       .font("Helvetica")
       .fontSize(10)
-      .fill("#666")
+      .fill("#64748b")
       .text(
-        "This is a computer generated receipt and does not require a signature.",
+        "This invoice is computer-generated and does not require a signature.",
         0,
-        doc.page.height - 60,
+        810,
         { align: "center" }
       );
 
     doc.end();
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Invoice generation failed" });
+    res.status(500).json({ message: "Invoice failed" });
   }
 };
-
-

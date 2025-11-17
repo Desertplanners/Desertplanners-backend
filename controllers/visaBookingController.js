@@ -2,6 +2,8 @@
 
 import VisaBooking from "../models/VisaBooking.js";
 import { Resend } from "resend";
+import PDFDocument from "pdfkit";
+import path from "path";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -34,15 +36,35 @@ export const createVisaBooking = async (req, res) => {
     // ====================================================================
 
     const filesHtml = `
-      ${booking.passportFront ? `<li>Passport Front: ${booking.passportFront}</li>` : ""}
-      ${booking.passportBack ? `<li>Passport Back: ${booking.passportBack}</li>` : ""}
-      ${booking.passportCover ? `<li>Passport Cover: ${booking.passportCover}</li>` : ""}
+      ${
+        booking.passportFront
+          ? `<li>Passport Front: ${booking.passportFront}</li>`
+          : ""
+      }
+      ${
+        booking.passportBack
+          ? `<li>Passport Back: ${booking.passportBack}</li>`
+          : ""
+      }
+      ${
+        booking.passportCover
+          ? `<li>Passport Cover: ${booking.passportCover}</li>`
+          : ""
+      }
       ${booking.photo ? `<li>Photo: ${booking.photo}</li>` : ""}
-      ${booking.accommodation ? `<li>Accommodation: ${booking.accommodation}</li>` : ""}
+      ${
+        booking.accommodation
+          ? `<li>Accommodation: ${booking.accommodation}</li>`
+          : ""
+      }
       ${booking.emiratesId ? `<li>Emirates ID: ${booking.emiratesId}</li>` : ""}
       ${booking.extraId ? `<li>Extra ID: ${booking.extraId}</li>` : ""}
       ${booking.oldVisa ? `<li>Old Visa: ${booking.oldVisa}</li>` : ""}
-      ${booking.flightTicket ? `<li>Flight Ticket: ${booking.flightTicket}</li>` : ""}
+      ${
+        booking.flightTicket
+          ? `<li>Flight Ticket: ${booking.flightTicket}</li>`
+          : ""
+      }
     `;
 
     const emailHtml = `
@@ -147,5 +169,303 @@ export const deleteVisaBooking = async (req, res) => {
     res.json({ message: "Booking deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+// 🔍 LOOKUP VISA BOOKING (Booking ID + Email)
+export const lookupVisaBooking = async (req, res) => {
+  try {
+    const { bookingId, email } = req.query;
+
+    // ❗ Validation
+    if (!bookingId || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking ID and Email are required",
+      });
+    }
+
+    // 🔍 Find Booking + Populate Visa Full Details
+    const booking = await VisaBooking.findById(bookingId).populate(
+      "visaId",
+      "title category price duration processingTime slug"
+    );
+
+    // ❗ Booking not found
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "No booking found with this ID",
+      });
+    }
+
+    // ❗ Email mismatch
+    if (booking.email.toLowerCase() !== email.toLowerCase()) {
+      return res.status(401).json({
+        success: false,
+        message: "Email does not match this booking",
+      });
+    }
+
+    // 👍 Everything OK
+    return res.status(200).json({
+      success: true,
+      booking,
+    });
+  } catch (err) {
+    console.log("❌ Lookup Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+export const downloadVisaInvoice = async (req, res) => {
+  try {
+    const booking = await VisaBooking.findById(req.params.id).populate("visaId");
+
+    if (!booking)
+      return res.status(404).json({ message: "Visa Booking not found" });
+
+    const doc = new PDFDocument({ size: "A4", margin: 0 });
+
+    res.setHeader(
+      "Content-disposition",
+      `attachment; filename=visa-invoice-${booking._id}.pdf`
+    );
+    res.setHeader("Content-type", "application/pdf");
+
+    doc.pipe(res);
+
+    // =====================================================
+    // HEADER (Soft Gradient)
+    // =====================================================
+    const headerGradient = doc.linearGradient(0, 0, 595, 120);
+    headerGradient.stop(0, "#e0f2fe").stop(1, "#f0f9ff");
+
+    doc.rect(0, 0, 595, 120).fill(headerGradient);
+
+    // LOGO LEFT
+    try {
+      const logoPath = path.resolve("public/desertplanners_logo.png");
+      doc.image(logoPath, 40, 32, { width: 120 });
+    } catch (err) {
+      console.log("Logo missing:", err);
+    }
+
+    // HEADER RIGHT CONTENT
+    const dpHeaderRightWidth = 220;
+    const dpHeaderX = 330;
+    const dpHeaderY = 30;
+
+    doc
+      .fill("#0f172a")
+      .font("Helvetica-Bold")
+      .fontSize(26)
+      .text("VISA INVOICE", dpHeaderX, dpHeaderY, {
+        width: dpHeaderRightWidth,
+        align: "right",
+      });
+
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .fill("#334155")
+      .text(`Invoice ID: ${booking._id}`, dpHeaderX, dpHeaderY + 40, {
+        width: dpHeaderRightWidth,
+        align: "right",
+      })
+      .text(`Payment: ${booking.paymentStatus || "Paid"}`, dpHeaderX, dpHeaderY + 58, {
+        width: dpHeaderRightWidth,
+        align: "right",
+      })
+      .text(
+        `Date: ${new Date(booking.createdAt).toLocaleDateString()}`,
+        dpHeaderX,
+        dpHeaderY + 76,
+        { width: dpHeaderRightWidth, align: "right" }
+      );
+
+    // =====================================================
+    // FROM & BILL TO (Clean Layout)
+    // =====================================================
+    let y = 160;
+
+    // LEFT - FROM
+    doc.fill("#0ea5e9").font("Helvetica-Bold").fontSize(15).text("FROM", 50, y);
+
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .fill("#334155")
+      .text("Desert Planners Tourism LLC", 50, y + 22)
+      .text("Dubai, UAE", 50, y + 38)
+      .text("info@desertplanners.net", 50, y + 54)
+      .text("+971 4354 6677", 50, y + 70);
+
+    // RIGHT - BILL TO
+    const dpRightPadding = 25;
+    const dpRightX = 330;
+    const dpRightWidth = 240 - dpRightPadding;
+
+    doc
+      .fill("#0ea5e9")
+      .font("Helvetica-Bold")
+      .fontSize(15)
+      .text("BILL TO", dpRightX, y, {
+        width: dpRightWidth,
+        align: "right",
+      });
+
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .fill("#334155")
+      .text(booking.fullName, dpRightX, y + 22, {
+        width: dpRightWidth,
+        align: "right",
+      })
+      .text(booking.email, dpRightX, y + 38, {
+        width: dpRightWidth,
+        align: "right",
+      })
+      .text(booking.phone || "—", dpRightX, y + 54, {
+        width: dpRightWidth,
+        align: "right",
+      });
+
+    // =====================================================
+    // VISA OVERVIEW TABLE
+    // =====================================================
+    let dpTableY = y + 120;
+
+    // Title
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(16)
+      .fill("#0f172a")
+      .text("Visa Overview", 50, dpTableY);
+
+    dpTableY += 35;
+
+    const dpTableHeight = 4 * 35;
+
+    doc
+      .roundedRect(45, dpTableY, 500, dpTableHeight, 12)
+      .fill("#f8fafc")
+      .stroke("#e2e8f0");
+
+    const dpRows = [
+      ["Visa Package", booking.visaId?.title || booking.visaType || "N/A"],
+      ["Visa Type", booking.visaType || "N/A"],
+      ["Nationality", booking.nationality || "N/A"],
+      ["Passport No", booking.passportNumber || "N/A"],
+    ];
+
+    dpRows.forEach(([label, value], idx) => {
+      const rowY = dpTableY + idx * 35;
+
+      if (idx > 0) {
+        doc.moveTo(45, rowY).lineTo(545, rowY).stroke("#e2e8f0");
+      }
+
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(12)
+        .fill("#1e3a8a")
+        .text(label, 60, rowY + 10);
+
+      doc
+        .font("Helvetica")
+        .fontSize(12)
+        .fill("#0f172a")
+        .text(value, 260, rowY + 10);
+    });
+
+    // =====================================================
+    // TOTAL SUMMARY (Single Line Layout)
+    // =====================================================
+    const dpTotalY = dpTableY + dpTableHeight + 50;
+
+    doc
+      .moveTo(45, dpTotalY - 12)
+      .lineTo(545, dpTotalY - 12)
+      .stroke("#e2e8f0");
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(14)
+      .fill("#0f172a")
+      .text("Total Payable Amount", 50, dpTotalY);
+
+    const dpAmtX = 305;
+    const dpAmtWidth = 215;
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(20)
+      .fill("#0284c7")
+      .text(`AED ${booking.amount || booking.totalPrice}`, dpAmtX, dpTotalY - 4, {
+        width: dpAmtWidth,
+        align: "right",
+      });
+
+    doc
+      .font("Helvetica")
+      .fontSize(10)
+      .fill("#64748b")
+      .text("Amount Received", dpAmtX, dpTotalY + 22, {
+        width: dpAmtWidth,
+        align: "right",
+      });
+
+    // =====================================================
+    // DYNAMIC FOOTER (Never overlaps)
+    // =====================================================
+    let dpFooterY = dpTotalY + 80;
+
+    if (dpFooterY > doc.page.height - 90) {
+      dpFooterY = doc.page.height - 90;
+    }
+
+    doc
+      .moveTo(45, dpFooterY)
+      .lineTo(545, dpFooterY)
+      .stroke("#e2e8f0");
+
+    doc
+      .roundedRect(45, dpFooterY + 5, 500, 45, 10)
+      .fillOpacity(0.15)
+      .fill("#e2e8f0")
+      .strokeOpacity(0.3)
+      .stroke("#cbd5e1");
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(11)
+      .fill("#334155")
+      .text(
+        "Thank you for choosing Desert Planners Tourism",
+        0,
+        dpFooterY + 12,
+        { align: "center" }
+      );
+
+    doc
+      .font("Helvetica")
+      .fontSize(10)
+      .fill("#64748b")
+      .text(
+        "This invoice is auto-generated and does not require a signature.",
+        0,
+        dpFooterY + 28,
+        { align: "center" }
+      );
+
+    doc.end();
+  } catch (err) {
+    console.log("Invoice Error:", err);
+    res.status(500).json({ message: "Invoice generation failed" });
   }
 };

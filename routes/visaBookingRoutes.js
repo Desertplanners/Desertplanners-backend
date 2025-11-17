@@ -5,6 +5,8 @@ import {
   getVisaBookingById,
   updateVisaBookingStatus,
   deleteVisaBooking,
+  lookupVisaBooking, 
+  downloadVisaInvoice,    // <-- ⭐ ADD THIS
 } from "../controllers/visaBookingController.js";
 
 import { visaUpload } from "../middleware/visaUpload.js";
@@ -22,9 +24,13 @@ const uploadFields = visaUpload.fields([
   { name: "oldVisa", maxCount: 1 },
   { name: "flightTicket", maxCount: 1 },
 ]);
+router.get("/invoice/:id", downloadVisaInvoice);
 
 // 🟢 Create booking
 router.post("/", uploadFields, createVisaBooking);
+
+// 🔍 ⭐ VISA LOOKUP (Booking ID + Email)
+router.get("/lookup", lookupVisaBooking);
 
 // 🔵 List bookings
 router.get("/", getAllVisaBookings);
