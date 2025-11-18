@@ -41,7 +41,7 @@ router.get("/:id", getVisaBookingById);
 // 🟡 Update status
 router.patch("/:id/status", updateVisaBookingStatus);
 
-// ❌ Delete booking
+// ❌ Delete bookinga
 router.delete("/:id", deleteVisaBooking);
 
 export default router;

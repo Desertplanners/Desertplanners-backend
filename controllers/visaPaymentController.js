@@ -135,26 +135,42 @@ export const createVisaPayment = async (req, res) => {
 export const visaPaymentWebhook = async (req, res) => {
   try {
     const data = req.body;
-    const status = data.status;
-    const bookingId = data.orderId;
+
+    // Normalize status
+    const status = (data.status || "").toLowerCase();
+
+    // Extract booking id safely
+    const bookingId =
+      data.orderId ||
+      data.order_id ||
+      data.reference ||
+      data.order?.id ||
+      null;
+
     const gatewayTxnId = data.id || data.transactionId || null;
 
     if (!bookingId) {
       return res.status(400).send("Missing visa booking id");
     }
 
-    if (status === "PAID") {
+    // AMOUNT FIX (fallback)
+    const paidAmount = Number(data.amount || data.total || 0);
+
+    // ===============================
+    // PAYMENT SUCCESS
+    // ===============================
+    if (status === "paid" || status === "success") {
       await VisaBooking.findByIdAndUpdate(bookingId, {
         paymentStatus: "paid",
-        status: "confirmed",
+        status: "completed", // allowed status
       });
 
       await Payment.findOneAndUpdate(
-        { bookingId: bookingId, transactionId: gatewayTxnId || undefined },
+        { bookingId, transactionId: gatewayTxnId || undefined },
         {
-          bookingId: bookingId,
+          bookingId,
           transactionId: gatewayTxnId,
-          amount: Number(data.amount || data.total || 0) || undefined,
+          amount: paidAmount,
           currency: data.currency || "AED",
           status: "paid",
           paymentInfo: data,
@@ -165,18 +181,21 @@ export const visaPaymentWebhook = async (req, res) => {
       );
     }
 
-    if (status === "FAILED") {
+    // ===============================
+    // PAYMENT FAILED
+    // ===============================
+    if (status === "failed" || status === "cancelled") {
       await VisaBooking.findByIdAndUpdate(bookingId, {
         paymentStatus: "failed",
-        status: "cancelled",
+        status: "rejected",
       });
 
       await Payment.findOneAndUpdate(
-        { bookingId: bookingId, transactionId: gatewayTxnId || undefined },
+        { bookingId, transactionId: gatewayTxnId || undefined },
         {
-          bookingId: bookingId,
+          bookingId,
           transactionId: gatewayTxnId,
-          amount: Number(data.amount || data.total || 0) || undefined,
+          amount: paidAmount,
           currency: data.currency || "AED",
           status: "failed",
           paymentInfo: data,

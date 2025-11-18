@@ -10,11 +10,18 @@ const VisaBookingSchema = new mongoose.Schema(
     },
 
     visaTitle: String,
+
+    // ⭐ NEW PRICING FIELDS
+    basePrice: { type: Number, default: 0 },
+    transactionFee: { type: Number, default: 0 },
+    finalAmount: { type: Number, default: 0 },
+
     totalPrice: {
       type: Number,
       required: true,
       default: 0,
     },
+
     processingTime: String,
 
     // Personal Info
@@ -48,7 +55,12 @@ const VisaBookingSchema = new mongoose.Schema(
     oldVisa: String,
     flightTicket: String,
 
-    // Status
+    // Payment / Status
+    paymentStatus: {
+      type: String,
+      default: "paid",
+    },
+
     status: {
       type: String,
       enum: ["pending", "processing", "completed", "rejected"],

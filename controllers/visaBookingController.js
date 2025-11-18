@@ -11,13 +11,24 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const fileUrl = (req, field) => req.files?.[field]?.[0]?.path || "";
 
 // 🟢 CREATE VISA BOOKING
+// 🟢 CREATE VISA BOOKING WITH TRANSACTION FEE
 export const createVisaBooking = async (req, res) => {
   try {
     const data = req.body;
 
-    // ⭐ Create booking with file uploads
+    // ⭐ Ensure transaction price fields are numbers
+    const basePrice = Number(data.basePrice || 0);
+    const transactionFee = Number(data.transactionFee || 0);
+    const finalAmount = Number(data.finalAmount || 0);
+
+    // ⭐ Create booking with file uploads + pricing fields
     const booking = new VisaBooking({
       ...data,
+
+      basePrice,
+      transactionFee,
+      finalAmount,
+
       passportFront: fileUrl(req, "passportFront"),
       passportBack: fileUrl(req, "passportBack"),
       passportCover: fileUrl(req, "passportCover"),
@@ -32,7 +43,7 @@ export const createVisaBooking = async (req, res) => {
     await booking.save();
 
     // ====================================================================
-    // ⭐ SEND EMAIL TO ADMIN (SAME DESIGN AS TOUR BOOKING)
+    // ⭐ SEND EMAIL TO ADMIN (Same design as before)
     // ====================================================================
 
     const filesHtml = `
@@ -78,7 +89,9 @@ export const createVisaBooking = async (req, res) => {
 
     <div style="padding:28px 30px;">
 
-      <h2 style="margin-top:0;color:#721011;">Applicant: ${booking.fullName}</h2>
+      <h2 style="margin-top:0;color:#721011;">Applicant: ${
+        booking.fullName
+      }</h2>
 
       <!-- ⭐ CUSTOMER DETAILS -->
       <div style="background:#fafafa;border:1px solid #eee;border-radius:12px;padding:18px 20px;margin-top:18px;">
@@ -90,14 +103,19 @@ export const createVisaBooking = async (req, res) => {
         <p><b>Passport No:</b> ${booking.passportNumber}</p>
         <p><b>Visa Type:</b> ${booking.visaType}</p>
         <p><b>Booking ID:</b> ${booking._id}</p>
+
+        <br/>
+        <p><b>Base Price:</b> AED ${booking.basePrice.toFixed(2)}</p>
+        <p><b>Transaction Fee (3.75%):</b> AED ${booking.transactionFee.toFixed(
+          2
+        )}</p>
+        <p><b>Final Amount:</b> AED ${booking.finalAmount.toFixed(2)}</p>
       </div>
 
       <!-- ⭐ FILE LINKS -->
       <div style="background:#fafafa;border:1px solid #eee;border-radius:12px;padding:18px 20px;margin:20px 0;">
         <h3 style="color:#721011;margin-top:0;">📎 Uploaded Documents</h3>
-        <ul style="padding-left:18px;color:#404041;margin:0;">
-          ${filesHtml}
-        </ul>
+        <ul style="padding-left:18px;color:#404041;margin:0;">${filesHtml}</ul>
       </div>
 
     </div>
@@ -105,7 +123,7 @@ export const createVisaBooking = async (req, res) => {
 </div>
 `;
 
-    // ⭐ SEND EMAIL
+    // ⭐ SEND EMAIL TO ADMIN
     await resend.emails.send({
       from: "Desert Planners Tourism LLC <onboarding@resend.dev>",
       to: process.env.ADMIN_EMAIL,
@@ -223,7 +241,9 @@ export const lookupVisaBooking = async (req, res) => {
 
 export const downloadVisaInvoice = async (req, res) => {
   try {
-    const booking = await VisaBooking.findById(req.params.id).populate("visaId");
+    const booking = await VisaBooking.findById(req.params.id).populate(
+      "visaId"
+    );
 
     if (!booking)
       return res.status(404).json({ message: "Visa Booking not found" });
@@ -276,10 +296,15 @@ export const downloadVisaInvoice = async (req, res) => {
         width: dpHeaderRightWidth,
         align: "right",
       })
-      .text(`Payment: ${booking.paymentStatus || "Paid"}`, dpHeaderX, dpHeaderY + 58, {
-        width: dpHeaderRightWidth,
-        align: "right",
-      })
+      .text(
+        `Payment: ${booking.paymentStatus || "Paid"}`,
+        dpHeaderX,
+        dpHeaderY + 58,
+        {
+          width: dpHeaderRightWidth,
+          align: "right",
+        }
+      )
       .text(
         `Date: ${new Date(booking.createdAt).toLocaleDateString()}`,
         dpHeaderX,
@@ -384,41 +409,39 @@ export const downloadVisaInvoice = async (req, res) => {
     });
 
     // =====================================================
-    // TOTAL SUMMARY (Single Line Layout)
+    // TOTAL SUMMARY (Base + Fee + Final Amount)
     // =====================================================
-    const dpTotalY = dpTableY + dpTableHeight + 50;
-
-    doc
-      .moveTo(45, dpTotalY - 12)
-      .lineTo(545, dpTotalY - 12)
-      .stroke("#e2e8f0");
+    const dpTotalY = dpTableY + dpTableHeight + 40;
 
     doc
       .font("Helvetica-Bold")
-      .fontSize(14)
+      .fontSize(16)
       .fill("#0f172a")
-      .text("Total Payable Amount", 50, dpTotalY);
+      .text("Payment Summary", 50, dpTotalY);
 
-    const dpAmtX = 305;
-    const dpAmtWidth = 215;
+    const summaryRows = [
+      ["Base Price", `AED ${booking.basePrice?.toFixed(2)}`],
+      ["Transaction Fee (3.75%)", `AED ${booking.transactionFee?.toFixed(2)}`],
+      ["Final Amount", `AED ${booking.finalAmount?.toFixed(2)}`],
+    ];
 
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(20)
-      .fill("#0284c7")
-      .text(`AED ${booking.amount || booking.totalPrice}`, dpAmtX, dpTotalY - 4, {
-        width: dpAmtWidth,
-        align: "right",
-      });
+    let yy = dpTotalY + 40;
 
-    doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fill("#64748b")
-      .text("Amount Received", dpAmtX, dpTotalY + 22, {
-        width: dpAmtWidth,
-        align: "right",
-      });
+    summaryRows.forEach(([label, value]) => {
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(12)
+        .fill("#1e3a8a")
+        .text(label, 60, yy);
+
+      doc
+        .font("Helvetica")
+        .fontSize(12)
+        .fill("#0f172a")
+        .text(value, 320, yy, { align: "right" });
+
+      yy += 28;
+    });
 
     // =====================================================
     // DYNAMIC FOOTER (Never overlaps)
@@ -429,10 +452,7 @@ export const downloadVisaInvoice = async (req, res) => {
       dpFooterY = doc.page.height - 90;
     }
 
-    doc
-      .moveTo(45, dpFooterY)
-      .lineTo(545, dpFooterY)
-      .stroke("#e2e8f0");
+    doc.moveTo(45, dpFooterY).lineTo(545, dpFooterY).stroke("#e2e8f0");
 
     doc
       .roundedRect(45, dpFooterY + 5, 500, 45, 10)
