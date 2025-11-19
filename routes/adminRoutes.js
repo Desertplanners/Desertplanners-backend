@@ -19,3 +19,4 @@ router.get("/me", protectAdmin, getAdminProfile);
 router.put("/me", protectAdmin, updateAdminProfile);
 
 export default router;
+//  There are admin Routes 
