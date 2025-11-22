@@ -11,6 +11,7 @@ import { protectAdmin } from "../middleware/adminMiddleware.js";
 
 const router = express.Router();
 
+// There are Admin Routes 
 router.post("/register", registerAdmin);
 router.post("/login", loginAdmin);
 router.get("/overview", protectAdmin, getAdminOverview);
