@@ -13,7 +13,8 @@ const router = express.Router();
 router.post("/create", createPayment);
 
 // Tour Webhook
-router.post("/webhook", express.urlencoded({ extended: true }), handleWebhook);
+router.post("/webhook", express.json(), handleWebhook);
+
 
 // Manual confirm (local)
 router.put("/confirm/:bookingId", manualConfirmPayment);
