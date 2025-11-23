@@ -28,7 +28,7 @@ router.get("/create-webhook", async (req, res) => {
       "https://api.test.paymennt.com/mer/v2.0/webhooks",
       {
         address:
-          "https://desertplanners-backend.onrender.com/api/payment/webhook",
+          "https://desertplanners-backend.onrender.com/api/payment/webhook",  // ✅ NEW URL
       },
       {
         headers: {
@@ -41,10 +41,9 @@ router.get("/create-webhook", async (req, res) => {
 
     return res.json(result.data);
   } catch (err) {
-    return res
-      .status(500)
-      .json(err.response?.data || { message: err.message });
+    return res.status(500).json(err.response?.data || { message: err.message });
   }
 });
+
 
 export default router;
