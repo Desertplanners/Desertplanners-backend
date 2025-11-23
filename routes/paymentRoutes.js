@@ -28,7 +28,7 @@ router.get("/create-webhook", async (req, res) => {
       "https://api.test.paymennt.com/mer/v2.0/webhooks",
       {
         address:
-          "https://desetplanner-backend.onrender.com/api/payment/webhook",
+          "https://desertplanners-backend.onrender.com/api/payment/webhook",
       },
       {
         headers: {
