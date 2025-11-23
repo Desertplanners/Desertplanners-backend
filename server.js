@@ -1,10 +1,10 @@
 // ==========================
-// 🌍 Desert Planners Backend Server (Universal Version)
+// 🌍 Desert Planners Backend Server
 // ==========================
 
 // 🧩 Load environment variables FIRST
 import dotenv from "dotenv";
-dotenv.config(); // ✅ Ye sabse pehle hona zaruri hai
+dotenv.config();
 
 // ==========================
 // 🧱 Core Imports
@@ -37,9 +37,10 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import bannerRoutes from "./routes/bannerRoutes.js";
 import visaBookingRoutes from "./routes/visaBookingRoutes.js";
 import visaPaymentRoutes from "./routes/visaPaymentRoutes.js";
-import holidayCategoryRoutes from "./routes/holidayCategoryRoutes.js"
-import holidayTourRoutes from "./routes/holidayTourRoutes.js"
-// ✅ Cloudinary Config (ensure it loads first)
+import holidayCategoryRoutes from "./routes/holidayCategoryRoutes.js";
+import holidayTourRoutes from "./routes/holidayTourRoutes.js";
+
+// Cloudinary
 import "./config/cloudinary.js";
 
 // ==========================
@@ -51,33 +52,36 @@ connectDB();
 // ⚙️ Express App Setup
 // ==========================
 const app = express();
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
+// ==========================
+// 🌍 FIXED CORS (LOCAL + VERCEL + DOMAIN)
+// ==========================
 
-// ==========================
-// 🌍 Smart CORS Setup (Local + Production)
-// ==========================
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://desertplanners-five.vercel.app", // ✅ your Vercel frontend
-  "https://desertplanners-backend.onrender.com", // ✅ your Render backend (correct spelling)
-];
 
-// 🧠 Log check for debugging
-// console.log("✅ Allowed Origins:", allowedOrigins);
+  // OLD Vercel frontend preview
+  "https://desertplanners-five.vercel.app",
+
+  // PRODUCTION domain (NEW)
+  "https://desertplanners.net",
+  "https://www.desertplanners.net",
+
+  // Render backend (just in case of internal calls)
+  "https://desertplanners-backend.onrender.com",
+];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+      if (!origin) return callback(null, true); // Allow Postman & mobile
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+
       console.warn("❌ Blocked by CORS:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
@@ -85,6 +89,7 @@ app.use(
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
 );
+
 // ==========================
 // 🧭 Routes
 // ==========================
@@ -106,19 +111,9 @@ app.use("/api/visa-payment", visaPaymentRoutes);
 app.use("/api/holiday-categories", holidayCategoryRoutes);
 app.use("/api/holiday-tour", holidayTourRoutes);
 
-// 🏠 Base route
 app.get("/", (req, res) => {
   res.send("✅ Desert Planners API is running...");
 });
-
-// Debug ENV Test
-// console.log("✅ ENV TEST FRONTEND_URL:", process.env.FRONTEND_URL);
-console.log(
-  "✅ ENV TEST MONGO_URI:",
-  process.env.MONGO_URI ? "Loaded ✅" : "Missing ❌"
-);
-
-console.log("Using payment URL:", process.env.PAYMENNT_API_URL);
 
 // ==========================
 // 📁 Serve Uploaded Files
@@ -126,15 +121,7 @@ console.log("Using payment URL:", process.env.PAYMENNT_API_URL);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-console.log("📂 Serving uploads from:", path.join(__dirname, "uploads"));
 
-
-process.on("unhandledRejection", (reason, p) => {
-  console.error("💥 UNHANDLED REJECTION:", reason);
-});
-process.on("uncaughtException", (err) => {
-  console.error("💥 UNCAUGHT EXCEPTION:", err);
-});
 // ==========================
 // 🚀 HTTP + Socket.io setup
 // ==========================
