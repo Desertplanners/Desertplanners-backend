@@ -64,8 +64,8 @@ app.use(morgan("dev"));
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://desertplanners.vercel.app", // ✅ your Vercel frontend
-  "https://desertplanner-backend.onrender.com", // ✅ your Render backend (correct spelling)
+  "https://desertplanners-five.vercel.app", // ✅ your Vercel frontend
+  "https://desertplanners-backend.onrender.com", // ✅ your Render backend (correct spelling)
 ];
 
 // 🧠 Log check for debugging
