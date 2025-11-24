@@ -1,5 +1,6 @@
 import axios from "axios";
 import express from "express";
+import bodyParser from "body-parser";
 import {
   createVisaPayment,
   visaPaymentWebhook,
@@ -11,20 +12,42 @@ const router = express.Router();
 // Create Visa Payment
 router.post("/create", createVisaPayment);
 
-// Visa Webhook
-router.post("/webhook", visaPaymentWebhook);
+// Visa Webhook (RAW BODY REQUIRED)
+router.post(
+  "/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  visaPaymentWebhook
+);
 
 // Manual Confirm (Test)
 router.post("/confirm/:bookingId", manualConfirmVisaPayment);
 
-// ⭐ Create Webhook Route (Visa) — SAME AS TOUR BUT WITH VISA WEBHOOK URL
+// ⭐ Check Registered Webhooks (Visa)
+router.get("/check-webhooks", async (req, res) => {
+  try {
+    const result = await axios.get(
+      "https://api.paymennt.com/mer/v2.0/webhooks",
+      {
+        headers: {
+          "X-Paymennt-Api-Key": process.env.PAYMENT_API_KEY,
+          "X-Paymennt-Api-Secret": process.env.PAYMENT_SECRET_KEY,
+        },
+      }
+    );
+    return res.json(result.data);
+  } catch (err) {
+    return res.status(500).json(err.response?.data || err.message);
+  }
+});
+
+// ⭐ Create Webhook (LIVE)
 router.get("/create-webhook", async (req, res) => {
   try {
     const result = await axios.post(
-      "https://api.test.paymennt.com/mer/v2.0/webhooks",
+      "https://api.paymennt.com/mer/v2.0/webhooks",
       {
         address:
-          "https://desetplanner-backend.onrender.com/api/visa-payment/webhook",
+          "https://desertplanners-backend.onrender.com/api/visa-payment/webhook",
       },
       {
         headers: {
