@@ -1,6 +1,7 @@
 // ⭐ COMPLETE UPDATED VISA BOOKING CONTROLLER WITH EMAIL NOTIFICATION
 
 import VisaBooking from "../models/VisaBooking.js";
+import Visa from "../models/Visa.js";
 import { Resend } from "resend";
 import PDFDocument from "pdfkit";
 import path from "path";
@@ -11,23 +12,29 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const fileUrl = (req, field) => req.files?.[field]?.[0]?.path || "";
 
 // 🟢 CREATE VISA BOOKING
-// 🟢 CREATE VISA BOOKING WITH TRANSACTION FEE
 export const createVisaBooking = async (req, res) => {
   try {
     const data = req.body;
 
-    // ⭐ Ensure transaction price fields are numbers
+    // ⭐ Ensure transaction amounts are handled as numbers
     const basePrice = Number(data.basePrice || 0);
     const transactionFee = Number(data.transactionFee || 0);
-    const finalAmount = Number(data.finalAmount || 0);
+    const finalAmount = Number(data.finalAmount || basePrice + transactionFee);
 
-    // ⭐ Create booking with file uploads + pricing fields
+    // ⭐ Fetch visa title from Visa model
+    const visa = await Visa.findById(data.visaId);
+
+    // ⭐ Create booking entry
     const booking = new VisaBooking({
       ...data,
+
+      visaTitle: visa?.title || "", // ⭐ FIX 1 → Save correct visa name
 
       basePrice,
       transactionFee,
       finalAmount,
+
+      totalPrice: finalAmount, // ⭐ FIX 2 → Reflect proper amount in admin panel
 
       passportFront: fileUrl(req, "passportFront"),
       passportBack: fileUrl(req, "passportBack"),
@@ -43,7 +50,7 @@ export const createVisaBooking = async (req, res) => {
     await booking.save();
 
     // ====================================================================
-    // ⭐ SEND EMAIL TO ADMIN (Same design as before)
+    // ⭐ EMAIL to ADMIN (same design)
     // ====================================================================
 
     const filesHtml = `
@@ -81,7 +88,7 @@ export const createVisaBooking = async (req, res) => {
     const emailHtml = `
 <div style="font-family:'Segoe UI',Arial,sans-serif;line-height:1.7;background:#f7f7f7;padding:25px;">
   <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 5px 18px rgba(0,0,0,0.1);">
-    
+
     <div style="background:linear-gradient(90deg,#e82429,#721011);padding:22px 0;text-align:center;color:#fff;">
       <h1 style="margin:0;font-size:26px;font-weight:700;">📄 UAE Visa Application</h1>
       <p style="margin:5px 0 0;font-size:15px;opacity:0.9;">New Visa Booking Received</p>
@@ -93,7 +100,6 @@ export const createVisaBooking = async (req, res) => {
         booking.fullName
       }</h2>
 
-      <!-- ⭐ CUSTOMER DETAILS -->
       <div style="background:#fafafa;border:1px solid #eee;border-radius:12px;padding:18px 20px;margin-top:18px;">
         <h3 style="color:#721011;margin-top:0;">🧑 Applicant Details</h3>
         <p><b>Name:</b> ${booking.fullName}</p>
@@ -101,6 +107,7 @@ export const createVisaBooking = async (req, res) => {
         <p><b>Contact:</b> ${booking.phone}</p>
         <p><b>Nationality:</b> ${booking.nationality}</p>
         <p><b>Passport No:</b> ${booking.passportNumber}</p>
+        <p><b>Visa Package:</b> ${booking.visaTitle}</p>
         <p><b>Visa Type:</b> ${booking.visaType}</p>
         <p><b>Booking ID:</b> ${booking._id}</p>
 
@@ -112,7 +119,6 @@ export const createVisaBooking = async (req, res) => {
         <p><b>Final Amount:</b> AED ${booking.finalAmount.toFixed(2)}</p>
       </div>
 
-      <!-- ⭐ FILE LINKS -->
       <div style="background:#fafafa;border:1px solid #eee;border-radius:12px;padding:18px 20px;margin:20px 0;">
         <h3 style="color:#721011;margin-top:0;">📎 Uploaded Documents</h3>
         <ul style="padding-left:18px;color:#404041;margin:0;">${filesHtml}</ul>
@@ -123,7 +129,6 @@ export const createVisaBooking = async (req, res) => {
 </div>
 `;
 
-    // ⭐ SEND EMAIL TO ADMIN
     await resend.emails.send({
       from: "Desert Planners Tourism LLC <onboarding@resend.dev>",
       to: process.env.ADMIN_EMAIL,
@@ -241,7 +246,9 @@ export const lookupVisaBooking = async (req, res) => {
 
 export const downloadVisaInvoice = async (req, res) => {
   try {
-    const booking = await VisaBooking.findById(req.params.id).populate("visaId");
+    const booking = await VisaBooking.findById(req.params.id).populate(
+      "visaId"
+    );
 
     if (!booking)
       return res.status(404).json({ message: "Visa Booking not found" });
@@ -302,11 +309,7 @@ export const downloadVisaInvoice = async (req, res) => {
     // --------------------------------------------------
     let y = 160;
 
-    doc
-      .font("Helvetica-Bold")
-      .fill("#0ea5e9")
-      .fontSize(15)
-      .text("FROM", 50, y);
+    doc.font("Helvetica-Bold").fill("#0ea5e9").fontSize(15).text("FROM", 50, y);
 
     doc
       .font("Helvetica")
@@ -394,103 +397,100 @@ export const downloadVisaInvoice = async (req, res) => {
         });
     });
 
- // --------------------------------------------------
-// PAYMENT SUMMARY – CLEAN, PROFESSIONAL, FIXED OVERFLOW
-// --------------------------------------------------
-const dpTotalY = dpTableY + dpTableHeight + 45;
+    // --------------------------------------------------
+    // PAYMENT SUMMARY – CLEAN, PROFESSIONAL, FIXED OVERFLOW
+    // --------------------------------------------------
+    const dpTotalY = dpTableY + dpTableHeight + 45;
 
-// Title
-doc
-  .font("Helvetica-Bold")
-  .fontSize(17)
-  .fill("#0f172a")
-  .text("Payment Summary", 50, dpTotalY);
+    // Title
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(17)
+      .fill("#0f172a")
+      .text("Payment Summary", 50, dpTotalY);
 
-// Values
-const base = Number(booking.basePrice || booking.totalPrice || 0);
-const fee = Number(booking.transactionFee || 0);
-const finalAmt = Number(booking.finalAmount || base + fee);
+    // Values
+    // ⭐ Correct backend-calculated pricing
+    const basePrice = Number(data.basePrice || 0);
+    const transactionFee = Number((basePrice * 0.0375).toFixed(2)); // 3.75%
+    const finalAmount = Number((basePrice + transactionFee).toFixed(2));
 
-// Layout paddings
-const Sx = 60;
-const Sw = 545 - 25 - Sx;
+    // Layout paddings
+    const Sx = 60;
+    const Sw = 545 - 25 - Sx;
 
-// Start Y
-let sy = dpTotalY + 40;
+    // Start Y
+    let sy = dpTotalY + 40;
 
-// ---------------------------------------------
-// Background Box (INCREASED HEIGHT to prevent overflow)
-// ---------------------------------------------
-const boxHeight = 170; // 👈 UPDATED — OLD was 140
+    // ---------------------------------------------
+    // Background Box (INCREASED HEIGHT to prevent overflow)
+    // ---------------------------------------------
+    const boxHeight = 170; // 👈 UPDATED — OLD was 140
 
-doc
-  .roundedRect(45, sy - 10, 500, boxHeight, 12)
-  .fill("#f4f7fb")
-  .stroke("#d2dae4");
+    doc
+      .roundedRect(45, sy - 10, 500, boxHeight, 12)
+      .fill("#f4f7fb")
+      .stroke("#d2dae4");
 
-const summaryRows = [
-  ["Base Price", `AED ${fmt(base)}`],
-  ["Transaction Fee (3.75%)", `AED ${fmt(fee)}`],
-];
+    const summaryRows = [
+      ["Base Price", `AED ${fmt(base)}`],
+      ["Transaction Fee (3.75%)", `AED ${fmt(fee)}`],
+    ];
 
-// ---------------------------------------------
-// RENDER ROWS
-// ---------------------------------------------
-summaryRows.forEach(([label, value], index) => {
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(13)
-    .fill("#1e3a8a")
-    .text(label, Sx, sy);
+    // ---------------------------------------------
+    // RENDER ROWS
+    // ---------------------------------------------
+    summaryRows.forEach(([label, value], index) => {
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(13)
+        .fill("#1e3a8a")
+        .text(label, Sx, sy);
 
-  doc
-    .font("Helvetica")
-    .fontSize(13)
-    .fill("#0f172a")
-    .text(value, Sx, sy, { width: Sw, align: "right" });
+      doc
+        .font("Helvetica")
+        .fontSize(13)
+        .fill("#0f172a")
+        .text(value, Sx, sy, { width: Sw, align: "right" });
 
-  sy += 32;
+      sy += 32;
 
-  // Extra spacing below fee
-  if (index === 1) sy += 8;
+      // Extra spacing below fee
+      if (index === 1) sy += 8;
 
-  doc.moveTo(55, sy).lineTo(540, sy).stroke("#e2e8f0");
+      doc.moveTo(55, sy).lineTo(540, sy).stroke("#e2e8f0");
 
-  sy += 10;
-});
+      sy += 10;
+    });
 
-// ---------------------------------------------
-// FINAL AMOUNT (Position FIXED so it stays inside box)
-// ---------------------------------------------
-const pillW = 220;
-const pillX = 545 - 25 - pillW;
+    // ---------------------------------------------
+    // FINAL AMOUNT (Position FIXED so it stays inside box)
+    // ---------------------------------------------
+    const pillW = 220;
+    const pillX = 545 - 25 - pillW;
 
-// 👇 IMPORTANT — place FINAL amount BEFORE exceeding box height
-const pillY = dpTotalY + 40 + 95; // perfectly inside background box
+    // 👇 IMPORTANT — place FINAL amount BEFORE exceeding box height
+    const pillY = dpTotalY + 40 + 95; // perfectly inside background box
 
-doc
-  .roundedRect(pillX, pillY, pillW, 32, 10)
-  .fill("#dbeafe"); // soft blue premium
+    doc.roundedRect(pillX, pillY, pillW, 32, 10).fill("#dbeafe"); // soft blue premium
 
-doc
-  .font("Helvetica-Bold")
-  .fontSize(15)
-  .fill("#1e40af")
-  .text(`AED ${fmt(finalAmt)}`, pillX + 12, pillY + 8, {
-    width: pillW - 24,
-    align: "right",
-  });
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(15)
+      .fill("#1e40af")
+      .text(`AED ${fmt(finalAmt)}`, pillX + 12, pillY + 8, {
+        width: pillW - 24,
+        align: "right",
+      });
 
-doc
-  .font("Helvetica-Bold")
-  .fontSize(15)
-  .fill("#0f172a")
-  .text("Final Amount", Sx, pillY + 8);
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(15)
+      .fill("#0f172a")
+      .text("Final Amount", Sx, pillY + 8);
 
-// Move pointer for footer
-sy = pillY + 50;
-
-
+    // Move pointer for footer
+    sy = pillY + 50;
 
     // --------------------------------------------------
     // SAFE FOOTER
@@ -522,9 +522,14 @@ sy = pillY + 50;
       .font("Helvetica")
       .fontSize(10)
       .fill("#64748b")
-      .text("This invoice is auto-generated and does not require a signature.", 0, footY + 32, {
-        align: "center",
-      });
+      .text(
+        "This invoice is auto-generated and does not require a signature.",
+        0,
+        footY + 32,
+        {
+          align: "center",
+        }
+      );
 
     doc.end();
   } catch (err) {

@@ -99,7 +99,7 @@ export const updateHolidayTour = async (req, res) => {
     const tour = await HolidayTour.findById(req.params.id);
     if (!tour) return res.status(404).json({ message: "Tour not found" });
 
-    // BASIC FIELDS
+    // ---------------- BASIC FIELDS ----------------
     tour.title = req.body.title;
     tour.slug = slugify(req.body.title, { lower: true, strict: true });
     tour.duration = req.body.duration;
@@ -109,40 +109,60 @@ export const updateHolidayTour = async (req, res) => {
     tour.description = req.body.description;
     tour.highlights = JSON.parse(req.body.highlights);
 
-    // =============== SLIDER IMAGES ===================
-    let sliderImages = req.body.existingSliderImages || [];
-    if (req.files?.sliderImages) {
-      sliderImages = [
-        ...sliderImages,
-        ...req.files.sliderImages.map((img) => img.path),
-      ];
-    }
-    tour.sliderImages = sliderImages;
+    // ============================================================
+    // ⭐⭐⭐  FIXED SLIDER IMAGE MERGE + DELETE FUNCTIONALITY ⭐⭐⭐
+    // ============================================================
 
-    // =========================================================
-    // ⭐⭐⭐ FIXED — CORRECT ITINERARY IMAGE INDEX MATCHING ⭐⭐⭐
-    // =========================================================
+    let finalSlider = [...tour.sliderImages];
+
+    // 1️⃣ Remove selected old slider images
+    if (req.body.removeSliderImages) {
+      try {
+        const toRemove = JSON.parse(req.body.removeSliderImages);
+        finalSlider = finalSlider.filter((img) => !toRemove.includes(img));
+      } catch (err) {
+        console.log("Slider remove parse error:", err);
+      }
+    }
+
+    // 2️⃣ Keep only images that user kept (existing images)
+    if (req.body.existingSliderImages) {
+      try {
+        const kept = JSON.parse(req.body.existingSliderImages);
+        finalSlider = kept; // replace with kept only
+      } catch {
+        finalSlider = req.body.existingSliderImages;
+      }
+    }
+
+    // 3️⃣ Add newly uploaded slider images
+    if (req.files?.sliderImages?.length > 0) {
+      const newSlider = req.files.sliderImages.map((img) => img.path);
+      finalSlider = [...finalSlider, ...newSlider];
+    }
+
+    tour.sliderImages = finalSlider;
+
+    // ============================================================
+    // ⭐ FIXED ITINERARY IMAGE REPLACEMENT WITH INDEX MATCHING ⭐
+    // ============================================================
 
     const titles = Array.isArray(req.body.itineraryTitle)
       ? req.body.itineraryTitle
       : [req.body.itineraryTitle];
 
-    // STEP 1 → Create empty array for new images
     let newImages = Array(titles.length).fill(null);
 
-    // STEP 2 → Read each uploaded file EXACT index from field name
-    // e.g. field name: "itineraryImages_3"
     if (req.files) {
       Object.keys(req.files).forEach((fieldName) => {
         if (fieldName.startsWith("itineraryImages_")) {
-          const index = Number(fieldName.split("_")[1]); // EXTRACT 3
-          const file = req.files[fieldName][0]; // multer array
+          const index = Number(fieldName.split("_")[1]);
+          const file = req.files[fieldName][0];
           if (file) newImages[index] = file.path;
         }
       });
     }
 
-    // STEP 3 → Create final itinerary array without breaking other images
     tour.itinerary = titles.map((title, index) => ({
       day: index + 1,
       title,
@@ -152,7 +172,9 @@ export const updateHolidayTour = async (req, res) => {
           : newImages[index] || tour.itinerary[index]?.image || "",
     }));
 
-    // =============== OTHER ARRAYS ==================
+    // =========================================================
+    // ⭐ OTHER ARRAYS
+    // =========================================================
     tour.knowBefore = req.body.knowBefore || [];
     tour.inclusions = req.body.inclusions || [];
     tour.exclusions = req.body.exclusions || [];

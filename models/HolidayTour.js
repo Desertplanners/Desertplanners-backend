@@ -4,7 +4,7 @@ import slugify from "slugify";
 const holidayTourSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
-    slug: { type: String, unique: true },   // ⭐ MUST HAVE
+    slug: { type: String, unique: true }, // ⭐ MUST HAVE
 
     duration: { type: String, required: true },
 
@@ -14,8 +14,8 @@ const holidayTourSchema = new mongoose.Schema(
       required: true,
     },
 
-    priceAdult: { type: Number, required: true },
-    priceChild: { type: Number },
+    priceAdult: { type: mongoose.Schema.Types.Mixed, required: true },
+    priceChild: { type: mongoose.Schema.Types.Mixed },
 
     description: { type: String, required: true },
 
