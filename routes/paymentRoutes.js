@@ -6,14 +6,18 @@ import {
   manualConfirmPayment,
   getAllTourPayments, // ⭐ COMBINED LIST (tour + visa)
 } from "../controllers/paymentController.js";
-
+import bodyParser from "body-parser";
 const router = express.Router();
 
 // Tour Payment Create
 router.post("/create", createPayment);
 
 // Tour Webhook
-router.post("/webhook", express.json(), handleWebhook);
+router.post(
+  "/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  handleWebhook
+);
 
 
 // Manual confirm (local)
@@ -26,10 +30,9 @@ router.get("/all", getAllTourPayments);
 router.get("/create-webhook", async (req, res) => {
   try {
     const result = await axios.post(
-      "https://api.paymennt.com/mer/v2.0/checkout/web",
+      "https://api.paymennt.com/mer/v2.0/webhooks",
       {
-        address:
-          "https://desertplanners-backend.onrender.com/api/payment/webhook",  // ✅ NEW URL
+        address: "https://desertplanners-backend.onrender.com/api/payment/webhook"
       },
       {
         headers: {
@@ -45,6 +48,7 @@ router.get("/create-webhook", async (req, res) => {
     return res.status(500).json(err.response?.data || { message: err.message });
   }
 });
+
 
 
 export default router;
