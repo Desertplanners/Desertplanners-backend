@@ -26,6 +26,24 @@ router.put("/confirm/:bookingId", manualConfirmPayment);
 // ⭐ FINAL: Combined Payments List
 router.get("/all", getAllTourPayments);
 
+
+// ⭐ CHECK WEBHOOKS HERE (Add this)
+router.get("/check-webhooks", async (req, res) => {
+  try {
+    const result = await axios.get(
+      "https://api.paymennt.com/mer/v2.0/webhooks",
+      {
+        headers: {
+          "X-Paymennt-Api-Key": process.env.PAYMENT_API_KEY,
+          "X-Paymennt-Api-Secret": process.env.PAYMENT_SECRET_KEY,
+        },
+      }
+    );
+    res.json(result.data);
+  } catch (err) {
+    res.status(500).json(err.response?.data || err.message);
+  }
+});
 // Create Paymennt Webhook (TEMP)
 router.get("/create-webhook", async (req, res) => {
   try {
