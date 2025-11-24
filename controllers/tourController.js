@@ -53,8 +53,8 @@ export const addTour = async (req, res) => {
     const {
       title,
       description,
-      priceAdult,     // ⭐ NEW
-      priceChild,     // ⭐ NEW
+      priceAdult, // ⭐ NEW
+      priceChild, // ⭐ NEW
       duration,
       category,
       highlights,
@@ -74,7 +74,7 @@ export const addTour = async (req, res) => {
     if (
       !title ||
       !description ||
-      !priceAdult ||    // ⭐ REQUIRED
+      !priceAdult || // ⭐ REQUIRED
       !duration ||
       !category ||
       !startDate ||
@@ -173,7 +173,6 @@ export const addTour = async (req, res) => {
   }
 };
 
-
 // 🟠 Update Tour (UPDATED for Adult + Child Price)
 export const updateTour = async (req, res) => {
   try {
@@ -182,8 +181,8 @@ export const updateTour = async (req, res) => {
     const {
       title,
       description,
-      priceAdult,     // ⭐ NEW
-      priceChild,     // ⭐ NEW
+      priceAdult,
+      priceChild,
       duration,
       category,
       highlights,
@@ -197,6 +196,7 @@ export const updateTour = async (req, res) => {
       maxGuests,
       termsAndConditions,
       relatedTours,
+      removeGalleryImages, // ⭐ NEW – images to remove
     } = req.body;
 
     console.log("🟠 Updating Tour:", id);
@@ -206,14 +206,34 @@ export const updateTour = async (req, res) => {
       return res.status(404).json({ message: "Tour not found" });
     }
 
-    // ⭐ IMAGE UPDATE
+    // ⭐ MAIN IMAGE UPDATE
     if (req.files?.mainImage?.length > 0) {
       tour.mainImage = req.files.mainImage[0].path;
     }
 
-    if (req.files?.galleryImages?.length > 0) {
-      tour.galleryImages = req.files.galleryImages.map((f) => f.path);
+    // ⭐⭐⭐ GALLERY IMAGES UPDATE (FULL FIX)
+    let updatedGallery = [...tour.galleryImages];
+
+    // Step 1: Remove old images (coming from frontend)
+    if (removeGalleryImages) {
+      try {
+        const removeList = JSON.parse(removeGalleryImages); // array of URLs
+        updatedGallery = updatedGallery.filter(
+          (img) => !removeList.includes(img)
+        );
+      } catch (err) {
+        console.log("❌ Error parsing removeGalleryImages:", err);
+      }
     }
+
+    // Step 2: Add newly uploaded images
+    if (req.files?.galleryImages?.length > 0) {
+      const newImages = req.files.galleryImages.map((f) => f.path);
+      updatedGallery = [...updatedGallery, ...newImages];
+    }
+
+    // Step 3: Save final gallery
+    tour.galleryImages = updatedGallery;
 
     // ⭐ BASIC FIELDS UPDATE
     if (title) {
@@ -228,7 +248,7 @@ export const updateTour = async (req, res) => {
     if (termsAndConditions !== undefined)
       tour.termsAndConditions = termsAndConditions;
 
-    // ⭐ PRICE FIELDS UPDATE
+    // ⭐ PRICE UPDATE
     if (priceAdult !== undefined) {
       tour.priceAdult = Number(priceAdult);
     }
@@ -237,7 +257,7 @@ export const updateTour = async (req, res) => {
       tour.priceChild = priceChild ? Number(priceChild) : null;
     }
 
-    // ⭐ DATES
+    // ⭐ DATES VALIDATION
     if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
       return res
         .status(400)
@@ -249,13 +269,13 @@ export const updateTour = async (req, res) => {
 
     if (maxGuests) tour.maxGuests = Number(maxGuests);
 
-    // ⭐ CATEGORY UPDATE
+    // ⭐ CATEGORY
     if (category) {
       const cat = await Category.findById(category);
       if (cat) tour.category = cat._id;
     }
 
-    // ⭐ ARRAY FIELDS UPDATE
+    // ⭐ ARRAY FIELDS
     tour.highlights = parseArray(highlights);
     tour.inclusions = parseArray(inclusions);
     tour.exclusions = parseArray(exclusions);
@@ -325,8 +345,6 @@ export const getTourBySlug = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-
 
 // 🔴 Delete tour
 export const deleteTour = async (req, res) => {
