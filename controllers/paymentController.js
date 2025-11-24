@@ -102,13 +102,13 @@
       // ----------- SAVE PAYMENT -----------
       const paymentDoc = new Payment({
         bookingId: booking._id,
-        bookingType: "tour",
+        bookingType: "Tour",
         transactionId: gatewayData?.result?.id || null,
         amount,
         currency: "AED",
-        status: "pending",
+        status: "Pending",
         paymentInfo: gatewayData,
-        method: "checkout",
+        method: "Checkout",
         gateway: "Paymennt",
       });
 

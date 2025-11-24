@@ -12,8 +12,8 @@ const PaymentSchema = new mongoose.Schema(
     currency: { type: String, default: "AED" },
     status: {
       type: String,
-      enum: ["pending", "paid", "failed"],
-      default: "pending",
+      enum: ["Pending", "Paid", "Failed"],
+      default: "Pending",
     },
     paymentInfo: Object,
     method: String, // card, wallet, etc.
