@@ -26,7 +26,7 @@ router.get("/all", getAllTourPayments);
 router.get("/create-webhook", async (req, res) => {
   try {
     const result = await axios.post(
-      "https://api.test.paymennt.com/mer/v2.0/webhooks",
+      "https://api.paymennt.com/mer/v2.0/checkout/web",
       {
         address:
           "https://desertplanners-backend.onrender.com/api/payment/webhook",  // ✅ NEW URL
