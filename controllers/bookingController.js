@@ -5,14 +5,35 @@ import Cart from "../models/Cart.js";
 import { Resend } from "resend";
 import Tour from "../models/Tour.js"; // ⭐ IMPORTANT for price fetching
 import PDFDocument from "pdfkit";
-
+import nodemailer from "nodemailer";
 import path from "path";
 
-// 🟢 Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
 
-// 🟢 Create Booking (Guest + Logged-in User)
+// -----------------------------------------------------------
+//  SMTP TRANSPORT
+// -----------------------------------------------------------
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT) || 465,
+  secure: process.env.SMTP_SECURE === "true",
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
+// Test SMTP connection once at start
+transporter.verify((error, success) => {
+  if (error) {
+    console.log("❌ SMTP Connection Error:", error);
+  } else {
+    console.log("✅ SMTP Ready to Send Emails");
+  }
+});
+
+// -----------------------------------------------------------
+//  CREATE BOOKING
+// -----------------------------------------------------------
 export const createBooking = async (req, res) => {
   try {
     const {
@@ -34,26 +55,18 @@ export const createBooking = async (req, res) => {
     let subtotal = 0;
     const processedItems = [];
 
-    // ⭐ PROCESS EACH ITEM
+    // ⭐ PROCESS ITEMS
     for (const item of items) {
-      let tour = null;
-
-      try {
-        tour = await Tour.findById(item.tourId);
-      } catch (error) {
-        tour = null;
-      }
+      let tour = await Tour.findById(item.tourId).catch(() => null);
 
       const adultPrice = Number(item.adultPrice || tour?.priceAdult || 0);
       const childPrice = Number(item.childPrice || tour?.priceChild || 0);
-
       const adultCount = Number(item.adultCount || 0);
       const childCount = Number(item.childCount || 0);
 
       const itemTotal = adultPrice * adultCount + childPrice * childCount;
       subtotal += itemTotal;
 
-      // 🚫 pickup/drop per-item nahi hona chahiye
       processedItems.push({
         tourId: item.tourId,
         date: item.date,
@@ -68,18 +81,14 @@ export const createBooking = async (req, res) => {
     const transactionFee = Number((subtotal * 0.0375).toFixed(2));
     const finalTotal = Number((subtotal + transactionFee).toFixed(2));
 
-    console.log("💰 SUBTOTAL:", subtotal);
-    console.log("💰 FEE 3.75%:", transactionFee);
-    console.log("💰 FINAL:", finalTotal);
-
-    // ⭐ SAVE BOOKING DATA (ROOT LEVEL)
+    // ⭐ PREPARE BOOKING DATA
     const bookingData = {
       items: processedItems,
       subtotal,
       transactionFee,
       totalPrice: finalTotal,
-      pickupPoint, // FIXED
-      dropPoint, // FIXED
+      pickupPoint,
+      dropPoint,
       specialRequest,
       status: "pending",
       paymentStatus: "pending",
@@ -91,8 +100,8 @@ export const createBooking = async (req, res) => {
       bookingData.userName = req.user.name;
     } else {
       bookingData.guestName = guestName;
-      bookingData.guestEmail = guestEmail;
-      bookingData.guestContact = guestContact;
+      bookingData.guestEmail = guestEmail.toLowerCase();
+      bookingData.guestContact = guestContact || "—";
     }
 
     // ⭐ SAVE BOOKING
@@ -104,59 +113,188 @@ export const createBooking = async (req, res) => {
       await Cart.findOneAndUpdate({ user: req.user._id }, { items: [] });
     }
 
-    // EMAIL FORMAT
+    // EMAIL DETAILS
     const bookingDetails = booking.items
       .map(
         (item) => `
-      <li>
-        <b>Tour:</b> ${item.tourId?.title} <br/>
-        <b>Date:</b> ${item.date} <br/>
-        <b>Adults:</b> ${item.adultCount} × ${item.adultPrice} <br/>
-        <b>Children:</b> ${item.childCount} × ${item.childPrice} <br/>
-      </li>
-      `
+          <li>
+            <b>Tour:</b> ${item.tourId?.title}<br/>
+            <b>Date:</b> ${item.date}<br/>
+            <b>Adults:</b> ${item.adultCount} × ${item.adultPrice}<br/>
+            <b>Children:</b> ${item.childCount} × ${item.childPrice}<br/>
+          </li>
+        `
       )
       .join("");
 
-    const emailHtml = `
-      <div style="font-family:Arial;padding:20px;">
-        <h2>New Booking Received</h2>
-        <p><b>Name:</b> ${booking.guestName || booking.userName}</p>
-        <p><b>Email:</b> ${booking.guestEmail || booking.userEmail}</p>
-        <p><b>Pickup:</b> ${pickupPoint}</p>
-        <p><b>Drop:</b> ${dropPoint}</p>
-        <hr/>
-        <h3>Booking Summary</h3>
-        <ul>${bookingDetails}</ul>
-        <hr/>
-        <p><b>Subtotal:</b> AED ${subtotal}</p>
-        <p><b>Transaction Fee :</b> AED ${transactionFee}</p>
-        <p><b>Total Payable:</b> AED ${finalTotal}</p>
-        <p><b>Booking ID:</b> ${booking._id}</p>
-      </div>
-    `;
+      const emailHtmlAdmin = `
+      <table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial;background:#f4f4f7;padding:20px;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+              
+              <!-- Header -->
+              <tr>
+                <td style="background:#b40303;color:white;padding:25px 30px;text-align:center;font-size:24px;font-weight:bold;">
+                  🚀 New Booking Received
+                </td>
+              </tr>
+      
+              <!-- Body -->
+              <tr>
+                <td style="padding:30px;font-size:15px;color:#333;">
+      
+                  <h3 style="margin:0 0 15px 0;color:#b40303;">Customer Details</h3>
+                  <p><b>Name:</b> ${booking.guestName || booking.userName}</p>
+                  <p><b>Email:</b> ${booking.guestEmail || booking.userEmail}</p>
+                  <p><b>Pickup:</b> ${pickupPoint}</p>
+                  <p><b>Drop:</b> ${dropPoint}</p>
+      
+                  <hr style="margin:25px 0;border:none;border-top:1px solid #ddd;">
+      
+                  <h3 style="margin:0 0 15px 0;color:#b40303;">Booking Summary</h3>
+                  <ul style="padding-left:18px;color:#555;font-size:14px;line-height:1.5;">
+                    ${bookingDetails}
+                  </ul>
+      
+                  <hr style="margin:25px 0;border:none;border-top:1px solid #ddd;">
+      
+                  <p style="font-size:16px;margin-bottom:8px;">
+                    <b>Total Amount:</b> AED ${finalTotal}
+                  </p>
+      
+                  <p style="margin-top:0;font-size:14px;color:#555;">
+                    <b>Booking ID:</b> ${booking._id}
+                  </p>
+                </td>
+              </tr>
+      
+              <!-- Footer -->
+              <tr>
+                <td style="background:#fafafa;color:#777;text-align:center;padding:15px;font-size:12px;">
+                  Desert Planners Tourism LLC ⬩ Dubai, UAE <br>
+                  This is an automated booking alert email.
+                </td>
+              </tr>
+      
+            </table>
+          </td>
+        </tr>
+      </table>
+      `;
+      
 
-    await resend.emails.send({
-      from: "Desert Planners <onboarding@resend.dev>",
-      to: process.env.ADMIN_EMAIL,
-      subject: "New Booking Received",
-      html: emailHtml,
-    });
+      const emailHtmlCustomer = `
+      <table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial;background:#f4f4f7;padding:20px;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+              
+              <!-- Header -->
+              <tr>
+                <td style="background:#b40303;color:white;padding:25px 30px;text-align:center;font-size:24px;font-weight:bold;">
+                  🎉 Your Booking is Confirmed!
+                </td>
+              </tr>
+      
+              <!-- Body -->
+              <tr>
+                <td style="padding:30px;font-size:15px;color:#333;">
+      
+                  <p style="margin-top:0;">
+                    Thank you for choosing <b>Desert Planners Tourism LLC</b>!  
+                    Your tour booking is now confirmed. Below are your details:
+                  </p>
+      
+                  <h3 style="margin:20px 0 10px;color:#b40303;">Your Details</h3>
+                  <p><b>Name:</b> ${booking.guestName || booking.userName}</p>
+                  <p><b>Email:</b> ${booking.guestEmail || booking.userEmail}</p>
+                  <p><b>Pickup:</b> ${pickupPoint}</p>
+                  <p><b>Drop:</b> ${dropPoint}</p>
+      
+                  <hr style="margin:25px 0;border:none;border-top:1px solid #ddd;">
+      
+                  <h3 style="margin-bottom:10px;color:#b40303;">Tour Summary</h3>
+                  <ul style="padding-left:18px;color:#555;font-size:14px;line-height:1.5;">
+                    ${bookingDetails}
+                  </ul>
+      
+                  <hr style="margin:25px 0;border:none;border-top:1px solid #ddd;">
+      
+                  <p style="font-size:18px;margin-bottom:8px;color:#000;">
+                    <b>Total Paid:</b> AED ${finalTotal}
+                  </p>
+      
+                  <p style="margin-top:0;font-size:14px;color:#555;">
+                    <b>Booking ID:</b> ${booking._id}
+                  </p>
+      
+                  <p style="margin-top:20px;font-size:14px;color:#444;">
+                    Our team will contact you shortly.  
+                    For urgent questions, reply directly to this email.
+                  </p>
+      
+                </td>
+              </tr>
+      
+              <!-- Footer -->
+              <tr>
+                <td style="background:#fafafa;color:#777;text-align:center;padding:15px;font-size:12px;">
+                  Desert Planners Tourism LLC ⬩ Dubai, UAE <br>
+                  Thank you for traveling with us ❤️
+                </td>
+              </tr>
+      
+            </table>
+          </td>
+        </tr>
+      </table>
+      `;
+      
+
+    // --------------------------------------------
+    //  SEND ADMIN EMAIL
+    // --------------------------------------------
+    try {
+      await transporter.sendMail({
+        from: `"Desert Planners Tourism LLC" <${process.env.SMTP_USER}>`,
+        to: process.env.ADMIN_EMAIL,
+        subject: "New Booking Received",
+        html: emailHtmlAdmin,
+      });
+      console.log("📨 ADMIN EMAIL SENT");
+    } catch (err) {
+      console.log("❌ ADMIN EMAIL FAILED:", err);
+    }
+
+    // --------------------------------------------
+    //  SEND CUSTOMER EMAIL
+    // --------------------------------------------
+    const customerEmail = booking.guestEmail || booking.userEmail;
+
+    try {
+      await transporter.sendMail({
+        from: `"Desert Planners Tourism LLC" <${process.env.SMTP_USER}>`,
+        to: customerEmail,
+        subject: "Booking Confirmation - Desert Planners Tourism LLC",
+        html: emailHtmlCustomer,
+      });
+      console.log("📨 CUSTOMER EMAIL SENT");
+    } catch (err) {
+      console.log("❌ CUSTOMER EMAIL FAILED:", err);
+    }
 
     return res.status(200).json({
       success: true,
-      message: "Booking successful",
+      message: "Booking successful & Emails sent",
       booking,
     });
   } catch (err) {
-    console.error("❌ Error creating booking:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Error",
-      error: err.message,
-    });
+    console.error("❌ BOOKING ERROR:", err);
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
+
 
 // 🟡 Get All Bookings (Admin - User + Guest)
 export const getAllBookings = async (req, res) => {
@@ -305,15 +443,23 @@ export const downloadInvoice = async (req, res) => {
       .font("Helvetica")
       .fontSize(11)
       .fill("#334155")
-      .text(`Invoice ID: ${booking._id}`, hdrX, 70, { width: hdrW, align: "right" })
+      .text(`Invoice ID: ${booking._id}`, hdrX, 70, {
+        width: hdrW,
+        align: "right",
+      })
       .text(`Payment: ${booking.paymentStatus}`, hdrX, 88, {
         width: hdrW,
         align: "right",
       })
-      .text(`Date: ${new Date(booking.createdAt).toLocaleDateString()}`, hdrX, 106, {
-        width: hdrW,
-        align: "right",
-      });
+      .text(
+        `Date: ${new Date(booking.createdAt).toLocaleDateString()}`,
+        hdrX,
+        106,
+        {
+          width: hdrW,
+          align: "right",
+        }
+      );
 
     // =====================================================
     // FROM + BILL TO
@@ -390,58 +536,57 @@ export const downloadInvoice = async (req, res) => {
 
     safeItems.forEach((item, index) => {
       const rowY = tableY + index * rowHeight;
-    
+
       doc
         .save()
         .roundedRect(45, rowY, 500, rowHeight - 8, 10)
         .fill(index % 2 === 0 ? "#ffffff" : "#f9fbff")
         .restore();
-    
+
       const tourName = item?.tourId?.title || "Tour";
       const adultCount = Number(item?.adultCount || 0);
       const childCount = Number(item?.childCount || 0);
-    
+
       const adultPrice = Number(item?.adultPrice || 0);
       const childPrice = Number(item?.childPrice || 0);
-    
+
       const qtyText =
         adultCount > 0 || childCount > 0
           ? `${adultCount} Adult${adultCount > 1 ? "s" : ""}${
               childCount > 0 ? `, ${childCount} Child` : ""
             }`
           : "0 Guests";
-    
+
       const priceText =
         childCount > 0
           ? `A: ${adultPrice} / C: ${childPrice}`
           : `AED ${adultPrice}`;
-    
-      const totalAmount =
-        adultPrice * adultCount + childPrice * childCount;
-    
+
+      const totalAmount = adultPrice * adultCount + childPrice * childCount;
+
       // ⭐ FIXED WRAPPING TOUR NAME
       doc
         .font("Helvetica-Bold")
         .fontSize(11)
         .fill("#0f172a")
         .text(`• ${tourName}`, 60, rowY + 10, {
-          width: 160,    // keep text inside Tour column
+          width: 160, // keep text inside Tour column
           height: 40,
           lineBreak: true,
         });
-    
+
       doc
         .font("Helvetica")
         .fontSize(10)
         .fill("#334155")
         .text(qtyText, 240, rowY + 14);
-    
+
       doc
         .font("Helvetica")
         .fontSize(10)
         .fill("#334155")
         .text(priceText, 350, rowY + 14);
-    
+
       doc
         .font("Helvetica-Bold")
         .fontSize(13)
@@ -451,7 +596,6 @@ export const downloadInvoice = async (req, res) => {
           align: "right",
         });
     });
-    
 
     tableY += safeItems.length * rowHeight;
 
@@ -494,7 +638,11 @@ export const downloadInvoice = async (req, res) => {
     let totalsLineY = totalsBoxStartY + 55;
 
     // Subtotal
-    doc.font("Helvetica").fontSize(12).fill("#475569").text("Subtotal", 60, totalsLineY);
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .fill("#475569")
+      .text("Subtotal", 60, totalsLineY);
 
     doc
       .font("Helvetica-Bold")
@@ -567,7 +715,7 @@ export const downloadInvoice = async (req, res) => {
       .font("Helvetica-Bold")
       .fontSize(11)
       .fill("#334155")
-      .text("Thank you for choosing Desert Planners Tourism", 0, footerY + 12, {
+      .text("Thank you for choosing Desert Planners Tourism LLC", 0, footerY + 12, {
         align: "center",
       });
 
