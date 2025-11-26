@@ -1,11 +1,14 @@
 import Visa from "../models/Visa.js";
 import VisaCategory from "../models/visaCategoryModel.js";
 import slugify from "slugify";
-// import { upload } from "../config/cloudinary.js"; // 👈 same as sectionController
 import { visaUpload } from "../middleware/visaUpload.js";
+import SEO from "../models/SEO.js"; // ✅ SEO MODEL IMPORTED
 
+// -------------------------------------
+// Helper Functions
+// -------------------------------------
 
-// ✅ Helper: normalize to array
+// Normalize to array
 const toArray = (val) => {
   if (!val) return [];
   if (Array.isArray(val)) return val.filter(Boolean);
@@ -20,9 +23,9 @@ const toArray = (val) => {
   return [];
 };
 
-/* ----------------------------------------------------------------
-   🟢 CREATE VISA (with image upload)
------------------------------------------------------------------- */
+// -------------------------------------
+// CREATE VISA (⭐ SEO AUTO-CREATE)
+// -------------------------------------
 export const createVisa = async (req, res) => {
   try {
     const {
@@ -43,25 +46,23 @@ export const createVisa = async (req, res) => {
       termsAndConditions,
     } = req.body;
 
-    // ✅ Validation
     if (!title || !price || !visaCategory) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // ✅ Handle image upload (main image)
+    // Image handling
     let mainImage = "";
-    if (req.file) {
-      mainImage = req.file.path; // Cloudinary uploaded URL
-    }
+    if (req.file) mainImage = req.file.path;
 
-    // ✅ Create slug
+    // Create slug
     const slug = slugify(title, { lower: true, strict: true });
 
-    // ✅ Validate category
+    // Validate category
     const foundCategory = await VisaCategory.findById(visaCategory);
     if (!foundCategory)
       return res.status(404).json({ message: "Visa category not found" });
 
+    // Create visa entry
     const newVisa = new Visa({
       title,
       slug,
@@ -84,6 +85,22 @@ export const createVisa = async (req, res) => {
 
     await newVisa.save();
 
+    // ⭐ CREATE DEFAULT SEO ENTRY
+    await SEO.create({
+      parentType: "visa",
+      parentId: newVisa._id,
+      seoTitle: newVisa.title,
+      seoDescription:
+        typeof overview === "string"
+          ? overview.slice(0, 160)
+          : (overview?.[0] || "").slice(0, 160),
+      seoKeywords: "",
+      seoOgImage: newVisa.img,
+      faqs: [],
+      ratingAvg: 4.9,
+      ratingCount: 15,
+    });
+
     res.status(201).json({
       message: "Visa created successfully",
       visa: newVisa,
@@ -94,12 +111,13 @@ export const createVisa = async (req, res) => {
   }
 };
 
-/* ----------------------------------------------------------------
-   🟡 UPDATE VISA (with optional image upload)
------------------------------------------------------------------- */
+// -------------------------------------
+// UPDATE VISA (⭐ SEO AUTO-UPDATE)
+// -------------------------------------
 export const updateVisa = async (req, res) => {
   try {
     const { id } = req.params;
+
     const {
       title,
       visaCategory,
@@ -115,12 +133,10 @@ export const updateVisa = async (req, res) => {
     const visa = await Visa.findById(id);
     if (!visa) return res.status(404).json({ message: "Visa not found" });
 
-    // ✅ Handle new image upload (optional)
-    if (req.file) {
-      visa.img = req.file.path;
-    }
+    // Image update
+    if (req.file) visa.img = req.file.path;
 
-    // ✅ Update fields if provided
+    // Update fields
     if (title) visa.title = title;
     if (visaCategory) visa.visaCategory = visaCategory;
     if (overview) visa.overview = toArray(overview);
@@ -134,6 +150,20 @@ export const updateVisa = async (req, res) => {
 
     await visa.save();
 
+    // ⭐ SEO UPDATE
+    await SEO.findOneAndUpdate(
+      { parentType: "visa", parentId: visa._id },
+      {
+        seoTitle: title || visa.title,
+        seoDescription:
+          typeof overview === "string"
+            ? overview.slice(0, 160)
+            : (overview?.[0] || visa.overview?.[0] || "").slice(0, 160),
+        seoOgImage: visa.img,
+      },
+      { new: true, upsert: true }
+    );
+
     res.json({ message: "Visa updated successfully", visa });
   } catch (err) {
     console.error("❌ Error updating visa:", err);
@@ -141,15 +171,16 @@ export const updateVisa = async (req, res) => {
   }
 };
 
-/* ----------------------------------------------------------------
-   🔵 GET ALL VISAS
------------------------------------------------------------------- */
+// -------------------------------------
+// GET ALL VISAS
+// -------------------------------------
 export const getAllVisas = async (req, res) => {
   try {
     const { category, categorySlug } = req.query;
     let filter = {};
 
     if (category) filter.visaCategory = category;
+
     if (categorySlug) {
       const foundCategory = await VisaCategory.findOne({ slug: categorySlug });
       if (foundCategory) filter.visaCategory = foundCategory._id;
@@ -166,30 +197,44 @@ export const getAllVisas = async (req, res) => {
   }
 };
 
-/* ----------------------------------------------------------------
-   🔵 GET VISA BY SLUG
------------------------------------------------------------------- */
+// -------------------------------------
+// GET VISA BY SLUG (⭐ SEO INCLUDED)
+// -------------------------------------
 export const getVisaBySlug = async (req, res) => {
   try {
     const visa = await Visa.findOne({ slug: req.params.slug }).populate(
       "visaCategory",
       "name slug"
     );
+
     if (!visa) return res.status(404).json({ message: "Visa not found" });
-    res.json(visa);
+
+    const seo = await SEO.findOne({
+      parentType: "visa",
+      parentId: visa._id,
+    });
+
+    res.json({ visa, seo });
   } catch (err) {
     console.error("❌ Error fetching visa by slug:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-/* ----------------------------------------------------------------
-   🔵 DELETE VISA
------------------------------------------------------------------- */
+// -------------------------------------
+// DELETE VISA (⭐ DELETE SEO TOO)
+// -------------------------------------
 export const deleteVisa = async (req, res) => {
   try {
     const visa = await Visa.findByIdAndDelete(req.params.id);
     if (!visa) return res.status(404).json({ message: "Visa not found" });
+
+    // Delete its SEO
+    await SEO.findOneAndDelete({
+      parentType: "visa",
+      parentId: req.params.id,
+    });
+
     res.json({ message: "Visa deleted successfully" });
   } catch (err) {
     console.error("❌ Error deleting visa:", err);
@@ -197,32 +242,12 @@ export const deleteVisa = async (req, res) => {
   }
 };
 
-/* ----------------------------------------------------------------
-   🔵 GET VISAS BY CATEGORY SLUG
------------------------------------------------------------------- */
-export const getVisasByCategory = async (req, res) => {
-  try {
-    const category = await VisaCategory.findOne({ slug: req.params.slug });
-    if (!category)
-      return res.status(404).json({ message: "Visa category not found" });
-
-    const visas = await Visa.find({ visaCategory: category._id })
-      .populate("visaCategory", "name slug")
-      .select("title slug price img");
-
-    res.json(visas);
-  } catch (err) {
-    console.error("❌ Error fetching visas by category:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-
-// 🟦 Get Visa by ID
+// -------------------------------------
+// GET VISA BY ID
+// -------------------------------------
 export const getVisaById = async (req, res) => {
   try {
-    const visa = await Visa.findById(req.params.id)
-      .populate("visaCategory"); // optional: agar category chahiye
+    const visa = await Visa.findById(req.params.id).populate("visaCategory");
 
     if (!visa) {
       return res.status(404).json({
@@ -242,5 +267,26 @@ export const getVisaById = async (req, res) => {
       message: "Server error while fetching visa",
       error: err.message,
     });
+  }
+};
+
+// -------------------------------------
+// GET VISAS BY CATEGORY SLUG
+// -------------------------------------
+export const getVisasByCategory = async (req, res) => {
+  try {
+    const category = await VisaCategory.findOne({ slug: req.params.slug });
+
+    if (!category)
+      return res.status(404).json({ message: "Visa category not found" });
+
+    const visas = await Visa.find({ visaCategory: category._id })
+      .populate("visaCategory", "name slug")
+      .select("title slug price img");
+
+    res.json(visas);
+  } catch (err) {
+    console.error("❌ Error fetching visas by category:", err);
+    res.status(500).json({ error: err.message });
   }
 };
