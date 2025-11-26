@@ -6,6 +6,7 @@ import {
   deleteTour,
   getToursByCategory,
   updateTour,
+  getTourById,
   checkAvailability,
 } from "../controllers/tourController.js";
 
@@ -35,6 +36,7 @@ router.put(
 
 // 🟠 Get Routes
 router.get("/", getTours);
+router.get("/id/:id", getTourById);
 router.get("/category/:categoryName", getToursByCategory);
 router.get("/:slug", getTourBySlug);
 router.delete("/:id", deleteTour);

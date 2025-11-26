@@ -2,6 +2,8 @@ import Tour from "../models/Tour.js";
 import Category from "../models/categoryModel.js";
 import slugify from "slugify";
 import mongoose from "mongoose";
+import SEO from "../models/SEO.js";
+
 // 🧠 Helper function to safely parse arrays
 const parseArray = (field) => {
   if (!field) return [];
@@ -157,6 +159,19 @@ export const addTour = async (req, res) => {
 
     await tour.save();
 
+    // ⭐ Create default SEO entry for this tour
+    await SEO.create({
+      parentType: "tour",
+      parentId: tour._id,
+      seoTitle: title,
+      seoDescription: description?.slice(0, 160),
+      seoKeywords: "",
+      seoOgImage: tour.mainImage,
+      faqs: [],
+      ratingAvg: 4.9,
+      ratingCount: 20,
+    });
+
     console.log("✅ Tour saved successfully:", tour.title);
     console.log("==================== ✅ ADD TOUR END ====================\n");
 
@@ -286,6 +301,19 @@ export const updateTour = async (req, res) => {
       tour.cancellationPolicy = parseCancellationPolicy(cancellationPolicy);
     }
 
+    // ⭐ Auto update SEO fields only if provided
+    await SEO.findOneAndUpdate(
+      { parentType: "tour", parentId: tour._id },
+      {
+        seoTitle: title || tour.title,
+        seoDescription: description
+          ? description.slice(0, 160)
+          : tour.description.slice(0, 160),
+        seoOgImage: tour.mainImage,
+      },
+      { upsert: true }
+    );
+
     await tour.save();
 
     console.log("✅ Tour updated successfully:", tour.title);
@@ -339,10 +367,33 @@ export const getTourBySlug = async (req, res) => {
 
     if (!tour) return res.status(404).json({ message: "Tour not found" });
 
-    res.json(tour);
+    const seo = await SEO.findOne({
+      parentType: "tour",
+      parentId: tour._id,
+    });
+
+    res.json({
+      tour,
+      seo,
+    });
   } catch (err) {
     console.error("❌ Error fetching tour:", err);
     res.status(500).json({ message: err.message });
+  }
+};
+
+export const getTourById = async (req, res) => {
+  try {
+    const tour = await Tour.findById(req.params.id);
+
+    if (!tour) {
+      return res.status(404).json({ message: "Tour not found" });
+    }
+
+    res.json(tour);
+  } catch (err) {
+    console.error("❌ GET_TOUR_BY_ID ERROR:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
