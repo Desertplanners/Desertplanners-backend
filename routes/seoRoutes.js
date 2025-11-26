@@ -1,23 +1,13 @@
 import express from "express";
-import {
-  createSEO,
-  updateSEO,
-  getSEO,
-  deleteSEO
-} from "../controllers/seoController.js";
+import seoUpload from "../middleware/seoUpload.js";
+import { createSEO, updateSEO, getSEO, deleteSEO } from "../controllers/seoController.js";
 
 const router = express.Router();
 
-// Create SEO
-router.post("/create", createSEO);
+router.post("/create", seoUpload.single("ogImage"), createSEO);
+router.put("/update", seoUpload.single("ogImage"), updateSEO);
 
-// Update SEO
-router.put("/update", updateSEO);
-
-// Get SEO by parentType + parentId
 router.get("/get", getSEO);
-
-// Delete SEO for a specific parent
 router.post("/delete", deleteSEO);
 
 export default router;
