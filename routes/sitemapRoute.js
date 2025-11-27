@@ -38,15 +38,20 @@ router.get("/sitemap.xml", async (req, res) => {
         (cat) => `<url><loc>${baseUrl}/tours/category/${cat}</loc></url>`
       );
 
-    // ===== DYNAMIC VISA PAGES =====
-    const visas = await Visa.find({}, "slug categorySlug");
-    
+    // ===== DYNAMIC VISA PAGES (FIXED) =====
+    const visas = await Visa.find({})
+      .populate("visaCategory", "slug")
+      .select("slug");
+
+    // visa detail URLs
     const visaUrls = visas.map(
-      (v) => `<url><loc>${baseUrl}/visa/${v.categorySlug}/${v.slug}</loc></url>`
+      (v) =>
+        `<url><loc>${baseUrl}/visa/${v.visaCategory?.slug}/${v.slug}</loc></url>`
     );
 
+    // visa category URLs
     const visaCategoryUrls = [
-      ...new Set(visas.map((v) => v.categorySlug)),
+      ...new Set(visas.map((v) => v.visaCategory?.slug)),
     ]
       .filter(Boolean)
       .map(
