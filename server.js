@@ -41,7 +41,7 @@ import holidayCategoryRoutes from "./routes/holidayCategoryRoutes.js";
 import holidayTourRoutes from "./routes/holidayTourRoutes.js";
 import seoRoutes from "./routes/seoRoutes.js"
 import sitemapRoute from "./routes/sitemapRoute.js";
-
+import robotsRoute from "./routes/robotsRoute.js";
 // Cloudinary
 import "./config/cloudinary.js";
 
@@ -95,6 +95,7 @@ app.use(
 // ==========================
 // 🧭 Routes
 // ==========================
+app.use("/", robotsRoute);
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
