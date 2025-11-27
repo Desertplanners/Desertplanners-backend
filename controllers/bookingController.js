@@ -5,31 +5,31 @@ import Cart from "../models/Cart.js";
 import { Resend } from "resend";
 import Tour from "../models/Tour.js"; // ⭐ IMPORTANT for price fetching
 import PDFDocument from "pdfkit";
-import nodemailer from "nodemailer";
+// import nodemailer from "nodemailer";
 import path from "path";
 
+const resend = new Resend(process.env.RESEND_API_KEY);
+// // -----------------------------------------------------------
+// //  SMTP TRANSPORT
+// // -----------------------------------------------------------
+// const transporter = nodemailer.createTransport({
+//   host: process.env.SMTP_HOST,
+//   port: Number(process.env.SMTP_PORT) || 465,
+//   secure: process.env.SMTP_SECURE === "true",
+//   auth: {
+//     user: process.env.SMTP_USER,
+//     pass: process.env.SMTP_PASS,
+//   },
+// });
 
-// -----------------------------------------------------------
-//  SMTP TRANSPORT
-// -----------------------------------------------------------
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 465,
-  secure: process.env.SMTP_SECURE === "true",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-// Test SMTP connection once at start
-transporter.verify((error, success) => {
-  if (error) {
-    console.log("❌ SMTP Connection Error:", error);
-  } else {
-    console.log("✅ SMTP Ready to Send Emails");
-  }
-});
+// // Test SMTP connection once at start
+// transporter.verify((error, success) => {
+//   if (error) {
+//     console.log("❌ SMTP Connection Error:", error);
+//   } else {
+//     console.log("✅ SMTP Ready to Send Emails");
+//   }
+// });
 
 // -----------------------------------------------------------
 //  CREATE BOOKING
@@ -127,7 +127,7 @@ export const createBooking = async (req, res) => {
       )
       .join("");
 
-      const emailHtmlAdmin = `
+    const emailHtmlAdmin = `
       <table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial;background:#f4f4f7;padding:20px;">
         <tr>
           <td align="center">
@@ -146,7 +146,9 @@ export const createBooking = async (req, res) => {
       
                   <h3 style="margin:0 0 15px 0;color:#b40303;">Customer Details</h3>
                   <p><b>Name:</b> ${booking.guestName || booking.userName}</p>
-                  <p><b>Email:</b> ${booking.guestEmail || booking.userEmail}</p>
+                  <p><b>Email:</b> ${
+                    booking.guestEmail || booking.userEmail
+                  }</p>
                   <p><b>Pickup:</b> ${pickupPoint}</p>
                   <p><b>Drop:</b> ${dropPoint}</p>
       
@@ -182,9 +184,8 @@ export const createBooking = async (req, res) => {
         </tr>
       </table>
       `;
-      
 
-      const emailHtmlCustomer = `
+    const emailHtmlCustomer = `
       <table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial;background:#f4f4f7;padding:20px;">
         <tr>
           <td align="center">
@@ -208,7 +209,9 @@ export const createBooking = async (req, res) => {
       
                   <h3 style="margin:20px 0 10px;color:#b40303;">Your Details</h3>
                   <p><b>Name:</b> ${booking.guestName || booking.userName}</p>
-                  <p><b>Email:</b> ${booking.guestEmail || booking.userEmail}</p>
+                  <p><b>Email:</b> ${
+                    booking.guestEmail || booking.userEmail
+                  }</p>
                   <p><b>Pickup:</b> ${pickupPoint}</p>
                   <p><b>Drop:</b> ${dropPoint}</p>
       
@@ -250,14 +253,13 @@ export const createBooking = async (req, res) => {
         </tr>
       </table>
       `;
-      
 
     // --------------------------------------------
-    //  SEND ADMIN EMAIL
+    //  SEND ADMIN EMAIL (RESEND)
     // --------------------------------------------
     try {
-      await transporter.sendMail({
-        from: `"Desert Planners Tourism LLC" <${process.env.SMTP_USER}>`,
+      await resend.emails.send({
+        from: "Desert Planners Tourism LLC <booking@desertplanners.net>",
         to: process.env.ADMIN_EMAIL,
         subject: "New Booking Received",
         html: emailHtmlAdmin,
@@ -268,18 +270,19 @@ export const createBooking = async (req, res) => {
     }
 
     // --------------------------------------------
-    //  SEND CUSTOMER EMAIL
+    //  SEND CUSTOMER EMAIL (RESEND)
     // --------------------------------------------
     const customerEmail = booking.guestEmail || booking.userEmail;
 
     try {
-      await transporter.sendMail({
-        from: `"Desert Planners Tourism LLC" <${process.env.SMTP_USER}>`,
+      await resend.emails.send({
+        from: "Desert Planners Tourism LLC <booking@desertplanners.net>",
         to: customerEmail,
         subject: "Booking Confirmation - Desert Planners Tourism LLC",
         html: emailHtmlCustomer,
       });
       console.log("📨 CUSTOMER EMAIL SENT");
+      console.log("📧 CUSTOMER EMAIL:", customerEmail);
     } catch (err) {
       console.log("❌ CUSTOMER EMAIL FAILED:", err);
     }
@@ -294,7 +297,6 @@ export const createBooking = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
-
 
 // 🟡 Get All Bookings (Admin - User + Guest)
 export const getAllBookings = async (req, res) => {
@@ -715,9 +717,14 @@ export const downloadInvoice = async (req, res) => {
       .font("Helvetica-Bold")
       .fontSize(11)
       .fill("#334155")
-      .text("Thank you for choosing Desert Planners Tourism LLC", 0, footerY + 12, {
-        align: "center",
-      });
+      .text(
+        "Thank you for choosing Desert Planners Tourism LLC",
+        0,
+        footerY + 12,
+        {
+          align: "center",
+        }
+      );
 
     doc
       .font("Helvetica")

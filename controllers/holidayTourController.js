@@ -1,9 +1,10 @@
 import HolidayTour from "../models/HolidayTour.js";
 import HolidayCategory from "../models/holidayCategoryModel.js";
 import slugify from "slugify";
+import SEO from "../models/SEO.js";
 
 // =============================================================
-// ⭐ CREATE HOLIDAY TOUR
+// ⭐ CREATE HOLIDAY TOUR (SEO INCLUDED)
 // =============================================================
 export const createHolidayTour = async (req, res) => {
   try {
@@ -23,7 +24,7 @@ export const createHolidayTour = async (req, res) => {
       itineraryTitle,
     } = req.body;
 
-    // Slider
+    // Slider Images
     const sliderImages = req.files?.sliderImages
       ? req.files.sliderImages.map((img) => img.path)
       : [];
@@ -33,9 +34,9 @@ export const createHolidayTour = async (req, res) => {
       ? req.files.itineraryImages.map((img) => img.path)
       : [];
 
-    const itinerary = (itineraryTitle || []).map((title, index) => ({
+    const itinerary = (itineraryTitle || []).map((t, index) => ({
       day: index + 1,
-      title,
+      title: t,
       image: itineraryImages[index] || "",
     }));
 
@@ -59,6 +60,19 @@ export const createHolidayTour = async (req, res) => {
 
     await tour.save();
 
+    // ⭐ AUTO-CREATE SEO ENTRY
+    await SEO.create({
+      parentType: "holiday",
+      parentId: tour._id,
+      seoTitle: title,
+      seoDescription: description?.slice(0, 160),
+      seoKeywords: "",
+      seoOgImage: sliderImages[0] || "",
+      faqs: [],
+      ratingAvg: 4.9,
+      ratingCount: 15,
+    });
+
     res.status(201).json({ success: true, message: "Created", tour });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -78,7 +92,7 @@ export const getAllHolidayTours = async (req, res) => {
 };
 
 // =============================================================
-// ⭐ GET SINGLE TOUR BY ID
+// ⭐ GET SINGLE HOLIDAY TOUR BY ID
 // =============================================================
 export const getHolidayTourById = async (req, res) => {
   try {
@@ -92,14 +106,14 @@ export const getHolidayTourById = async (req, res) => {
 };
 
 // =============================================================
-// ⭐⭐ UPDATE HOLIDAY TOUR (FULLY FIXED ITINERARY CODE) ⭐⭐
+// ⭐⭐ UPDATE HOLIDAY TOUR + SEO UPDATE ⭐⭐
 // =============================================================
 export const updateHolidayTour = async (req, res) => {
   try {
     const tour = await HolidayTour.findById(req.params.id);
     if (!tour) return res.status(404).json({ message: "Tour not found" });
 
-    // ---------------- BASIC FIELDS ----------------
+    // -------- BASIC FIELDS --------
     tour.title = req.body.title;
     tour.slug = slugify(req.body.title, { lower: true, strict: true });
     tour.duration = req.body.duration;
@@ -109,33 +123,18 @@ export const updateHolidayTour = async (req, res) => {
     tour.description = req.body.description;
     tour.highlights = JSON.parse(req.body.highlights);
 
-    // ============================================================
-    // ⭐⭐⭐  FIXED SLIDER IMAGE MERGE + DELETE FUNCTIONALITY ⭐⭐⭐
-    // ============================================================
-
+    // -------- SLIDER IMAGE UPDATE --------
     let finalSlider = [...tour.sliderImages];
 
-    // 1️⃣ Remove selected old slider images
     if (req.body.removeSliderImages) {
-      try {
-        const toRemove = JSON.parse(req.body.removeSliderImages);
-        finalSlider = finalSlider.filter((img) => !toRemove.includes(img));
-      } catch (err) {
-        console.log("Slider remove parse error:", err);
-      }
+      const toRemove = JSON.parse(req.body.removeSliderImages);
+      finalSlider = finalSlider.filter((img) => !toRemove.includes(img));
     }
 
-    // 2️⃣ Keep only images that user kept (existing images)
     if (req.body.existingSliderImages) {
-      try {
-        const kept = JSON.parse(req.body.existingSliderImages);
-        finalSlider = kept; // replace with kept only
-      } catch {
-        finalSlider = req.body.existingSliderImages;
-      }
+      finalSlider = JSON.parse(req.body.existingSliderImages);
     }
 
-    // 3️⃣ Add newly uploaded slider images
     if (req.files?.sliderImages?.length > 0) {
       const newSlider = req.files.sliderImages.map((img) => img.path);
       finalSlider = [...finalSlider, ...newSlider];
@@ -143,10 +142,7 @@ export const updateHolidayTour = async (req, res) => {
 
     tour.sliderImages = finalSlider;
 
-    // ============================================================
-    // ⭐ FIXED ITINERARY IMAGE REPLACEMENT WITH INDEX MATCHING ⭐
-    // ============================================================
-
+    // -------- ITINERARY IMAGES UPDATE --------
     const titles = Array.isArray(req.body.itineraryTitle)
       ? req.body.itineraryTitle
       : [req.body.itineraryTitle];
@@ -163,18 +159,16 @@ export const updateHolidayTour = async (req, res) => {
       });
     }
 
-    tour.itinerary = titles.map((title, index) => ({
+    tour.itinerary = titles.map((t, index) => ({
       day: index + 1,
-      title,
+      title: t,
       image:
         newImages[index] === "__KEEP_OLD__"
           ? tour.itinerary[index]?.image || ""
           : newImages[index] || tour.itinerary[index]?.image || "",
     }));
 
-    // =========================================================
-    // ⭐ OTHER ARRAYS
-    // =========================================================
+    // -------- OTHER ARRAYS --------
     tour.knowBefore = req.body.knowBefore || [];
     tour.inclusions = req.body.inclusions || [];
     tour.exclusions = req.body.exclusions || [];
@@ -182,6 +176,17 @@ export const updateHolidayTour = async (req, res) => {
     tour.terms = req.body.terms || [];
 
     await tour.save();
+
+    // ⭐ UPDATE SEO ON HOLIDAY UPDATE
+    await SEO.findOneAndUpdate(
+      { parentType: "holiday", parentId: tour._id },
+      {
+        seoTitle: tour.title,
+        seoDescription: tour.description?.slice(0, 160),
+        seoOgImage: tour.sliderImages[0] || "",
+      },
+      { upsert: true }
+    );
 
     res.json({ success: true, message: "Updated", tour });
   } catch (err) {
@@ -191,7 +196,7 @@ export const updateHolidayTour = async (req, res) => {
 };
 
 // =============================================================
-// ⭐ DELETE TOUR
+// ⭐ DELETE HOLIDAY TOUR
 // =============================================================
 export const deleteHolidayTour = async (req, res) => {
   try {
@@ -208,7 +213,8 @@ export const deleteHolidayTour = async (req, res) => {
 export const getToursByCategory = async (req, res) => {
   try {
     const category = await HolidayCategory.findOne({ slug: req.params.slug });
-    if (!category) return res.status(404).json({ message: "Category not found" });
+    if (!category)
+      return res.status(404).json({ message: "Category not found" });
 
     const tours = await HolidayTour.find({ category: category._id }).select(
       "title slug priceAdult sliderImages duration"
@@ -221,7 +227,7 @@ export const getToursByCategory = async (req, res) => {
 };
 
 // =============================================================
-// ⭐ GET PACKAGE BY SLUG
+// ⭐ GET PACKAGE BY SLUG (SEO INCLUDED)
 // =============================================================
 export const getHolidayPackageBySlug = async (req, res) => {
   try {
@@ -233,7 +239,12 @@ export const getHolidayPackageBySlug = async (req, res) => {
 
     if (!tour) return res.status(404).json({ message: "Package not found" });
 
-    res.json(tour);
+    const seo = await SEO.findOne({
+      parentType: "holiday",
+      parentId: tour._id,
+    });
+
+    res.json({ success: true, tour, seo });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
