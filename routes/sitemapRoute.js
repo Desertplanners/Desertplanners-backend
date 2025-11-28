@@ -147,14 +147,14 @@ router.get("/sitemap.html", async (req, res) => {
       { name: "About Us", url: `${baseUrl}/about-us` },
       { name: "Contact", url: `${baseUrl}/contact-us` },
       { name: "Privacy Policy", url: `${baseUrl}/privacy-policy` },
-      { name: "Terms & Conditions", url: `${baseUrl}/terms-conditions` },
+      { name: "Terms & Conditions", url: `${baseUrl}/terms-and-conditions` },
       { name: "Tours", url: `${baseUrl}/tours` },
       { name: "Visa", url: `${baseUrl}/visa` },
       { name: "Holidays", url: `${baseUrl}/holidays` },
     ];
 
     // TOURS
-    const tours = await Tour.find({});
+    const tours = await Tour.find({}).populate("category", "slug name").lean();
     const tourList = tours.map((t) => ({
       name: t.title,
       url: `${baseUrl}/tours/${t.slug}`,
