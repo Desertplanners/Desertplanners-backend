@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /admin/dashboard
+Disallow: /*?*
 
 Sitemap: https://www.desertplanners.net/sitemap.xml

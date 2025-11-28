@@ -37,28 +37,30 @@ router.get("/sitemap.xml", async (req, res) => {
     );
 
     // ===== TOURS =====
-    const tours = await Tour.find({});
+    const tours = await Tour.find({}).populate("category", "slug");
+
     const tourUrls = tours.map(
       (t) => `
-      <url>
-        <loc>${baseUrl}/tours/${t.slug}</loc>
-        <lastmod>${formatDate(t.updatedAt)}</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.8</priority>
-      </url>`
+  <url>
+    <loc>${baseUrl}/tours/${t.category?.slug}/${t.slug}</loc>
+    <lastmod>${formatDate(t.updatedAt)}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>`
     );
 
     // TOUR CATEGORY URLs
     const tourCategories = [
       ...new Set(tours.map((t) => t.category?.slug)),
     ].filter(Boolean);
+
     const tourCategoryUrls = tourCategories.map(
       (cat) => `
-      <url>
-        <loc>${baseUrl}/tours/category/${cat}</loc>
-        <changefreq>daily</changefreq>
-        <priority>0.7</priority>
-      </url>`
+  <url>
+    <loc>${baseUrl}/tours/category/${cat}</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>`
     );
 
     // ===== VISAS =====
@@ -142,9 +144,8 @@ router.get("/sitemap.html", async (req, res) => {
     // STATIC PAGES
     const staticPages = [
       { name: "Home", url: `${baseUrl}/` },
-      { name: "About Us", url: `${baseUrl}/about` },
-      { name: "Contact", url: `${baseUrl}/contact` },
-      { name: "FAQs", url: `${baseUrl}/faqs` },
+      { name: "About Us", url: `${baseUrl}/about-us` },
+      { name: "Contact", url: `${baseUrl}/contact-us` },
       { name: "Privacy Policy", url: `${baseUrl}/privacy-policy` },
       { name: "Terms & Conditions", url: `${baseUrl}/terms-conditions` },
       { name: "Tours", url: `${baseUrl}/tours` },

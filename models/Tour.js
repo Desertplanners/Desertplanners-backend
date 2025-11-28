@@ -1,7 +1,6 @@
 // ⭐ UPDATED FULL FILE BELOW
 
 import mongoose from "mongoose";
-import slugify from "slugify";
 
 const tourSchema = new mongoose.Schema(
   {
@@ -9,7 +8,6 @@ const tourSchema = new mongoose.Schema(
     slug: { type: String, unique: true, lowercase: true },
     description: { type: String, required: true },
 
-    // ⭐ UPDATED — adult & child pricing
     priceAdult: { type: Number, required: true },
     priceChild: { type: Number, default: null },
 
@@ -56,12 +54,26 @@ const tourSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// ⭐ FIX: CLEAN SEO-FRIENDLY SLUG GENERATOR
 tourSchema.pre("save", function (next) {
-  if (!this.slug) {
-    this.slug = slugify(this.title, { lower: true });
+  if (!this.slug || this.isModified("title")) {
+
+    const cleanTitle = this.title
+      .toLowerCase()
+      .replace(/\+/g, "")        // remove +
+      .replace(/&/g, "")         // remove &
+      .replace(/\//g, "")        // remove /
+      .replace(/%/g, "")         // remove %
+      .replace(/[^a-z0-9\s-]/g, "")  // remove special chars
+      .replace(/\s+/g, "-")      // spaces → dash
+      .replace(/-+/g, "-")       // multiple dash → single dash
+      .trim();
+
+    this.slug = cleanTitle;
   }
   next();
 });
 
 const Tour = mongoose.model("Tour", tourSchema);
 export default Tour;
+  
