@@ -5,14 +5,14 @@ import slugify from "slugify";
 const visaCategorySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, unique: true, trim: true },
-    slug: { type: String, unique: true },
+    slug: { type: String, unique: true, lowercase: true, trim: true },
   },
   { timestamps: true }
 );
 
-// Automatically generate slug from name
+// Auto-generate slug from name
 visaCategorySchema.pre("save", function (next) {
-  if (!this.slug && this.name) {
+  if (this.isModified("name") || !this.slug) {
     this.slug = slugify(this.name, { lower: true, strict: true });
   }
   next();

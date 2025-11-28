@@ -1,17 +1,18 @@
+// models/holidayCategoryModel.js
 import mongoose from "mongoose";
 import slugify from "slugify";
 
 const holidayCategorySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, unique: true, trim: true },
-    slug: { type: String, unique: true },
+    slug: { type: String, unique: true, trim: true, lowercase: true },
   },
   { timestamps: true }
 );
 
-// Auto-generate slug
+// Auto-generate slug whenever name changes
 holidayCategorySchema.pre("save", function (next) {
-  if (!this.slug && this.name) {
+  if (this.isModified("name") || !this.slug) {
     this.slug = slugify(this.name, { lower: true, strict: true });
   }
   next();

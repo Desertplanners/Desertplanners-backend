@@ -3,29 +3,31 @@ import {
   addHolidayCategory,
   getHolidayCategories,
   deleteHolidayCategory,
-  editHolidayCategory,
   updateHolidayCategory,
   getHolidayPackagesByCategory,
 } from "../controllers/holidayCategoryController.js";
 
 const router = express.Router();
 
-// Add new
+/*  
+-------------------------------------------
+      HOLIDAY CATEGORY ROUTES (UPDATED)
+-------------------------------------------
+*/
+
+// ➕ Add new category
 router.post("/", addHolidayCategory);
 
-// Get all
+// 📄 Get all categories
 router.get("/", getHolidayCategories);
 
-// Delete
+// 📝 Update category (name + slug + SEO update)
+router.put("/:id", updateHolidayCategory);
+
+// ❌ Delete category (also deletes category SEO)
 router.delete("/:id", deleteHolidayCategory);
 
-// Edit name
-router.put("/:id", editHolidayCategory);
-
-// Update + slug
-router.put("/update/:id", updateHolidayCategory);
-
-// Get packages by category slug
+// 📦 Get holiday packages inside a category by slug
 router.get("/category/:slug", getHolidayPackagesByCategory);
 
 export default router;

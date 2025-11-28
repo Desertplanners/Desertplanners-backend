@@ -1,5 +1,6 @@
 import Category from "../models/categoryModel.js";
 import slugify from "slugify";
+import SEO from "../models/SEO.js";
 
 // 🟢 Add new category
 export const addCategory = async (req, res) => {
@@ -16,8 +17,8 @@ export const addCategory = async (req, res) => {
       name,
       slug: slugify(name, { lower: true, strict: true }),
     });
-    await category.save();
 
+    await category.save();
     res.status(201).json(category);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -34,11 +35,12 @@ export const getCategories = async (req, res) => {
   }
 };
 
-// 🔵 Edit (Update) category — with slug regeneration
+// 🔵 Edit category + SEO UPDATE (IMPORTANT)
 export const editCategory = async (req, res) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
+
     if (!name)
       return res.status(400).json({ message: "Category name is required" });
 
@@ -46,23 +48,47 @@ export const editCategory = async (req, res) => {
     if (!category)
       return res.status(404).json({ message: "Category not found" });
 
+    // OLD slug
+    const oldSlug = category.slug;
+
+    // NEW slug
+    const newSlug = slugify(name, { lower: true, strict: true });
+
+    // Update category
     category.name = name;
-    category.slug = slugify(name, { lower: true, strict: true });
+    category.slug = newSlug;
     await category.save();
 
-    res.json(category);
+    // ⭐ UPDATE SEO parentId (if exists)
+    await SEO.findOneAndUpdate(
+      { parentType: "tourCategory", parentId: oldSlug },
+      { parentId: newSlug }
+    );
+
+    res.json({ message: "Category updated", category });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 🟠 Delete category
+// 🟠 Delete category + delete SEO for category
 export const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await Category.findByIdAndDelete(id);
-    if (!deleted)
+
+    const category = await Category.findById(id);
+    if (!category)
       return res.status(404).json({ message: "Category not found" });
+
+    const slug = category.slug;
+
+    await Category.findByIdAndDelete(id);
+
+    // ⭐ DELETE SEO RELATED TO CATEGORY
+    await SEO.findOneAndDelete({
+      parentType: "tourCategory",
+      parentId: slug,
+    });
 
     res.json({ message: "Category deleted successfully" });
   } catch (error) {

@@ -5,18 +5,23 @@ export const createSEO = async (req, res) => {
   try {
     const body = req.body;
 
-    // FAQ ko JSON parse karna (FormData me string aata hai)
+    // Always convert parentId to string
+    if (body.parentId) {
+      body.parentId = String(body.parentId);
+    }
+
+    // Parse FAQ
     if (body.faqs) {
       try {
         body.faqs = JSON.parse(body.faqs);
-      } catch (err) {
+      } catch {
         body.faqs = [];
       }
     }
 
-    // ⭐ OG Image Cloudinary se aayi hai
+    // OG Image
     if (req.file) {
-      body.seoOgImage = req.file.path; // Cloudinary URL
+      body.seoOgImage = req.file.path;
     }
 
     const seo = await SEO.create(body);
@@ -28,29 +33,35 @@ export const createSEO = async (req, res) => {
   }
 };
 
-
-
 // ⭐ UPDATE SEO
 export const updateSEO = async (req, res) => {
   try {
     const body = req.body;
 
-    // FAQ parse
+    // Ensure parentId is always string
+    if (body.parentId) {
+      body.parentId = String(body.parentId);
+    }
+
+    // Parse FAQs
     if (body.faqs) {
       try {
         body.faqs = JSON.parse(body.faqs);
-      } catch (err) {
+      } catch {
         body.faqs = [];
       }
     }
 
-    // ⭐ New OG Image upload hua ho to replace karo
+    // OG Image replace
     if (req.file) {
-      body.seoOgImage = req.file.path; // Cloudinary URL
+      body.seoOgImage = req.file.path;
     }
 
     const seo = await SEO.findOneAndUpdate(
-      { parentType: body.parentType, parentId: body.parentId },
+      {
+        parentType: body.parentType,
+        parentId: body.parentId,
+      },
       body,
       { new: true, upsert: true }
     );
@@ -62,14 +73,15 @@ export const updateSEO = async (req, res) => {
   }
 };
 
-
-
 // ⭐ GET SEO BY PARENT
 export const getSEO = async (req, res) => {
   try {
     const { parentType, parentId } = req.query;
 
-    const seo = await SEO.findOne({ parentType, parentId });
+    const seo = await SEO.findOne({
+      parentType,
+      parentId: String(parentId),
+    });
 
     res.json({ success: true, seo });
   } catch (err) {
@@ -78,14 +90,15 @@ export const getSEO = async (req, res) => {
   }
 };
 
-
-
-// ⭐ DELETE SEO ENTRY
+// ⭐ DELETE SEO
 export const deleteSEO = async (req, res) => {
   try {
     const { parentType, parentId } = req.body;
 
-    await SEO.findOneAndDelete({ parentType, parentId });
+    await SEO.findOneAndDelete({
+      parentType,
+      parentId: String(parentId),
+    });
 
     res.json({ success: true, message: "SEO deleted successfully" });
   } catch (err) {

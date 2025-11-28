@@ -1,13 +1,13 @@
+// controllers/holidayCategoryController.js
 import HolidayCategory from "../models/holidayCategoryModel.js";
-import HolidayTour from "../models/HolidayTour.js";   // ✅ MISSING IMPORT FIXED
+import HolidayTour from "../models/HolidayTour.js";
 import slugify from "slugify";
-
+import SEO from "../models/SEO.js";
 
 // 🟢 Add new Holiday Category
 export const addHolidayCategory = async (req, res) => {
   try {
     const { name } = req.body;
-
     if (!name)
       return res.status(400).json({ message: "Category name is required" });
 
@@ -34,7 +34,7 @@ export const getHolidayCategories = async (req, res) => {
   }
 };
 
-// 🟢 Delete Category
+// 🟠 Delete Category + delete related SEO
 export const deleteHolidayCategory = async (req, res) => {
   try {
     const deleted = await HolidayCategory.findByIdAndDelete(req.params.id);
@@ -42,50 +42,41 @@ export const deleteHolidayCategory = async (req, res) => {
     if (!deleted)
       return res.status(404).json({ message: "Category not found" });
 
+    await SEO.findOneAndDelete({
+      parentType: "holidayCategory",
+      parentId: deleted.slug,
+    });
+
     res.json({ message: "Category deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 🟢 Edit Category (name only)
-export const editHolidayCategory = async (req, res) => {
-  try {
-    const updated = await HolidayCategory.findByIdAndUpdate(
-      req.params.id,
-      { name: req.body.name },
-      { new: true }
-    );
-
-    if (!updated)
-      return res.status(404).json({ message: "Category not found" });
-
-    res.json(updated);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// 🟢 Update Category + Update Slug
+// 🟢 Update Category + Update Slug + Update SEO parentId
 export const updateHolidayCategory = async (req, res) => {
   try {
     const { name } = req.body;
 
-    const updated = await HolidayCategory.findByIdAndUpdate(
-      req.params.id,
-      {
-        name,
-        slug: slugify(name, { lower: true, strict: true }),
-      },
-      { new: true }
-    );
-
-    if (!updated)
+    const category = await HolidayCategory.findById(req.params.id);
+    if (!category)
       return res.status(404).json({ message: "Category not found" });
+
+    const oldSlug = category.slug;
+    const newSlug = slugify(name, { lower: true, strict: true });
+
+    category.name = name;
+    category.slug = newSlug;
+    await category.save();
+
+    await SEO.findOneAndUpdate(
+      { parentType: "holidayCategory", parentId: oldSlug },
+      { parentId: newSlug }
+    );
 
     res.json({
       message: "Category updated successfully",
-      category: updated,
+      category,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -98,7 +89,6 @@ export const getHolidayPackagesByCategory = async (req, res) => {
     const { slug } = req.params;
 
     const category = await HolidayCategory.findOne({ slug });
-
     if (!category)
       return res.status(404).json({ message: "Category not found" });
 
