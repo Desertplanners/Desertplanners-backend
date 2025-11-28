@@ -203,71 +203,171 @@ router.get("/sitemap.html", async (req, res) => {
 
     // HTML TEMPLATE
     let html = `
-        <html>
-        <head>
-          <title>HTML Sitemap - Desert Planners</title>
-          <style>
-            body { font-family: Arial; padding: 20px; line-height: 1.7; }
-            h2 { color: #b40303; margin-top: 30px; }
-            a { color: #0077cc; text-decoration: none; }
-            a:hover { text-decoration: underline; }
-          </style>
-        </head>
-        <body>
-          <h1>HTML Sitemap</h1>
-  
-          <h2>Static Pages</h2>
-          <ul>
-            ${staticPages
-              .map((p) => `<li><a href="${p.url}">${p.name}</a></li>`)
-              .join("")}
-          </ul>
-  
-          <h2>Tours</h2>
-          <ul>
-            ${tourList
-              .map((p) => `<li><a href="${p.url}">${p.name}</a></li>`)
-              .join("")}
-          </ul>
-  
-          <h2>Tour Categories</h2>
-          <ul>
-            ${tourCategoryList
-              .map((p) => `<li><a href="${p.url}">${p.name}</a></li>`)
-              .join("")}
-          </ul>
-  
-          <h2>Visas</h2>
-          <ul>
-            ${visaList
-              .map((p) => `<li><a href="${p.url}">${p.name}</a></li>`)
-              .join("")}
-          </ul>
-  
-          <h2>Visa Categories</h2>
-          <ul>
-            ${visaCategoryList
-              .map((p) => `<li><a href="${p.url}">${p.name}</a></li>`)
-              .join("")}
-          </ul>
-  
-          <h2>Holiday Packages</h2>
-          <ul>
-            ${holidayList
-              .map((p) => `<li><a href="${p.url}">${p.name}</a></li>`)
-              .join("")}
-          </ul>
-  
-          <h2>Holiday Categories</h2>
-          <ul>
-            ${holidayCategoryList
-              .map((p) => `<li><a href="${p.url}">${p.name}</a></li>`)
-              .join("")}
-          </ul>
-  
-        </body>
-        </html>
-      `;
+<html>
+<head>
+  <title>HTML Sitemap - Desert Planners</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f7f7f7;
+      color: #333;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      background: #ffffff;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 32px;
+      color: #b40303;
+      margin-bottom: 20px;
+      border-bottom: 3px solid #b40303;
+      padding-bottom: 10px;
+    }
+
+    .section {
+      margin-top: 40px;
+      padding-left: 10px;
+      border-left: 5px solid #b40303;
+    }
+
+    .section h2 {
+      font-size: 26px;
+      color: #b40303;
+      margin-bottom: 15px;
+    }
+
+    ul {
+      list-style: none;
+      padding-left: 10px;
+    }
+
+    ul li {
+      padding: 6px 0;
+      font-size: 16px;
+      border-bottom: 1px solid #eee;
+    }
+
+    ul li:last-child {
+      border-bottom: none;
+    }
+
+    a {
+      color: #0066cc;
+      text-decoration: none;
+      transition: 0.2s ease-in-out;
+    }
+
+    a:hover {
+      color: #b40303;
+      text-decoration: underline;
+    }
+
+    .footer-note {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <h1>HTML Sitemap</h1>
+
+    <div class="section">
+      <h2>Static Pages</h2>
+      <ul>
+        ${staticPages
+          .map(
+            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Tours</h2>
+      <ul>
+        ${tourList
+          .map(
+            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Tour Categories</h2>
+      <ul>
+        ${tourCategoryList
+          .map(
+            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Visas</h2>
+      <ul>
+        ${visaList
+          .map(
+            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Visa Categories</h2>
+      <ul>
+        ${visaCategoryList
+          .map(
+            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Holiday Packages</h2>
+      <ul>
+        ${holidayList
+          .map(
+            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Holiday Categories</h2>
+      <ul>
+        ${holidayCategoryList
+          .map(
+            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+
+    <p class="footer-note">Desert Planners Tourism LLC – Sitemap Generated Automatically</p>
+
+  </div>
+</body>
+</html>
+`;
 
     res.header("Content-Type", "text/html");
     res.send(html);
