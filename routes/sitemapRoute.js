@@ -17,8 +17,8 @@ router.get("/sitemap.xml", async (req, res) => {
     // ===== STATIC PAGES =====
     const staticPages = [
       "",
-      "about",
-      "contact",
+      "about-us",
+      "contact-us",
       "faqs",
       "privacy-policy",
       "terms-conditions",
