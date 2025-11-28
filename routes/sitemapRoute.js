@@ -286,7 +286,7 @@ router.get("/sitemap.html", async (req, res) => {
     <h1>HTML Sitemap</h1>
 
     <div class="section">
-      <h2>Static Pages</h2>
+      <h2>Pages</h2>
       <ul>
         ${staticPages
           .map(
