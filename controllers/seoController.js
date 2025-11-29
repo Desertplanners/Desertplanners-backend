@@ -1,74 +1,54 @@
+// controllers/seoController.js
 import SEO from "../models/SEO.js";
 
-// ⭐ CREATE SEO
-export const createSEO = async (req, res) => {
+// 🧠 Helper: Parse FAQ safely
+const parseFAQ = (faqs) => {
+  if (!faqs) return [];
+
   try {
-    const body = req.body;
-
-    // Always convert parentId to string
-    if (body.parentId) {
-      body.parentId = String(body.parentId);
-    }
-
-    // Parse FAQ
-    if (body.faqs) {
-      try {
-        body.faqs = JSON.parse(body.faqs);
-      } catch {
-        body.faqs = [];
-      }
-    }
-
-    // OG Image
-    if (req.file) {
-      body.seoOgImage = req.file.path;
-    }
-
-    const seo = await SEO.create(body);
-
-    res.json({ success: true, seo });
-  } catch (err) {
-    console.log("❌ SEO Create Error:", err);
-    res.status(500).json({ success: false, message: err.message });
+    const parsed = JSON.parse(faqs);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
 };
 
-// ⭐ UPDATE SEO
-export const updateSEO = async (req, res) => {
+// ⭐ SINGLE FUNCTION → CREATE + UPDATE (via upsert)
+export const saveSEO = async (req, res) => {
   try {
-    const body = req.body;
+    let body = req.body;
 
-    // Ensure parentId is always string
+    // Ensure parentId is always a string
     if (body.parentId) {
       body.parentId = String(body.parentId);
     }
 
-    // Parse FAQs
+    // Parse FAQs if sent
     if (body.faqs) {
-      try {
-        body.faqs = JSON.parse(body.faqs);
-      } catch {
-        body.faqs = [];
-      }
+      body.faqs = parseFAQ(body.faqs);
     }
 
-    // OG Image replace
+    // If new OG image uploaded, replace
     if (req.file) {
       body.seoOgImage = req.file.path;
     }
 
+    // ⭐ Main logic — UPDATE if exists, CREATE if not (NO DUPLICATE)
     const seo = await SEO.findOneAndUpdate(
       {
         parentType: body.parentType,
         parentId: body.parentId,
       },
-      body,
-      { new: true, upsert: true }
+      { $set: body },
+      {
+        new: true,
+        upsert: true, // 🔥 Create new if not found
+      }
     );
 
     res.json({ success: true, seo });
   } catch (err) {
-    console.log("❌ SEO Update Error:", err);
+    console.log("❌ SEO Save Error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };

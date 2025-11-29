@@ -367,11 +367,13 @@ export const getTourBySlug = async (req, res) => {
 
     if (!tour) return res.status(404).json({ message: "Tour not found" });
 
+    // ⭐ STAR – THIS ALREADY RETURNS SEO
     const seo = await SEO.findOne({
       parentType: "tour",
-      parentId: tour._id,
+      parentId: tour._id.toString(),
     });
-
+       
+    
     res.json({
       tour,
       seo,

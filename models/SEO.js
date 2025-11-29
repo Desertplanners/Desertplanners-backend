@@ -12,11 +12,10 @@ const seoSchema = new mongoose.Schema(
         "tourCategory",
         "visaCategory",
         "holidayCategory",
-        "page", // static pages
+        "page", 
       ],
     },
 
-    // Always store as string (ObjectId or slug)
     parentId: {
       type: String,
       required: true,
@@ -40,5 +39,12 @@ const seoSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// ⭐ VERY IMPORTANT — STOP DUPLICATE SEO ENTRIES
+seoSchema.index(
+  { parentType: 1, parentId: 1 },
+  { unique: true }
+);
+
 const SEO = mongoose.model("SEO", seoSchema);
 export default SEO;
+  
