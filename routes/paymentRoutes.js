@@ -15,9 +15,21 @@ router.post("/create", createPayment);
 // Tour Webhook
 router.post(
   "/webhook",
-  bodyParser.raw({ type: "application/json" }),
+  bodyParser.raw({ type: "*/*" }),
+  (req, res, next) => {
+    try {
+      console.log("➡️ RAW BODY:", req.body.toString()); // ADD THIS
+
+      req.body = JSON.parse(req.body.toString("utf8"));
+      console.log("➡️ PARSED BODY:", req.body); // ADD THIS
+    } catch (err) {
+      console.log("❌ JSON Parse Error:", err.message);
+    }
+    next();
+  },
   handleWebhook
 );
+
 
 
 // Manual confirm (local)

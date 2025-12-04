@@ -136,7 +136,7 @@ export const createBooking = async (req, res) => {
               <!-- Header -->
               <tr>
                 <td style="background:#b40303;color:white;padding:25px 30px;text-align:center;font-size:24px;font-weight:bold;">
-                  🚀 New Booking Received
+                  📝 New Booking Created (Pending Payment)
                 </td>
               </tr>
       
