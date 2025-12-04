@@ -178,8 +178,8 @@ export const handleWebhook = async (req, res) => {
       console.log("💰 PAYMENT SUCCESS FOR BOOKING:", bookingId);
 
       await Booking.findByIdAndUpdate(bookingId, {
-        paymentStatus: "paid",
-        status: "confirmed",
+        paymentStatus: "Paid",
+        status: "Confirmed",
       });
 
       // Save/Update Payment Status
@@ -191,7 +191,7 @@ export const handleWebhook = async (req, res) => {
           transactionId: gatewayTxnId,
           amount: Number(data.amount) || booking.totalPrice,
           currency: data.currency || "AED",
-          status: "paid",
+          status: "Paid",
           paymentInfo: data,
           method: "checkout",
           gateway: "Paymennt",
@@ -353,7 +353,7 @@ export const manualConfirmPayment = async (req, res) => {
 
     const booking = await Booking.findByIdAndUpdate(
       bookingId,
-      { paymentStatus: "paid", status: "confirmed" },
+      { paymentStatus: "Paid", status: "Confirmed" },
       { new: true }
     );
 
