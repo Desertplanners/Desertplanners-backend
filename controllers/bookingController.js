@@ -32,7 +32,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // });
 
 // -----------------------------------------------------------
-//  CREATE BOOKING                                                   
+//  CREATE BOOKING
 // -----------------------------------------------------------
 export const createBooking = async (req, res) => {
   try {
@@ -190,23 +190,23 @@ export const createBooking = async (req, res) => {
     //     <tr>
     //       <td align="center">
     //         <table width="600" cellpadding="0" cellspacing="0" style="background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
-              
+
     //           <!-- Header -->
     //           <tr>
     //             <td style="background:#b40303;color:white;padding:25px 30px;text-align:center;font-size:24px;font-weight:bold;">
     //               🎉 Your Booking is Confirmed!
     //             </td>
     //           </tr>
-      
+
     //           <!-- Body -->
     //           <tr>
     //             <td style="padding:30px;font-size:15px;color:#333;">
-      
+
     //               <p style="margin-top:0;">
-    //                 Thank you for choosing <b>Desert Planners Tourism LLC</b>!  
+    //                 Thank you for choosing <b>Desert Planners Tourism LLC</b>!
     //                 Your tour booking is now confirmed. Below are your details:
     //               </p>
-      
+
     //               <h3 style="margin:20px 0 10px;color:#b40303;">Your Details</h3>
     //               <p><b>Name:</b> ${booking.guestName || booking.userName}</p>
     //               <p><b>Email:</b> ${
@@ -214,32 +214,32 @@ export const createBooking = async (req, res) => {
     //               }</p>
     //               <p><b>Pickup:</b> ${pickupPoint}</p>
     //               <p><b>Drop:</b> ${dropPoint}</p>
-      
+
     //               <hr style="margin:25px 0;border:none;border-top:1px solid #ddd;">
-      
+
     //               <h3 style="margin-bottom:10px;color:#b40303;">Tour Summary</h3>
     //               <ul style="padding-left:18px;color:#555;font-size:14px;line-height:1.5;">
     //                 ${bookingDetails}
     //               </ul>
-      
+
     //               <hr style="margin:25px 0;border:none;border-top:1px solid #ddd;">
-      
+
     //               <p style="font-size:18px;margin-bottom:8px;color:#000;">
     //                 <b>Total Paid:</b> AED ${finalTotal}
     //               </p>
-      
+
     //               <p style="margin-top:0;font-size:14px;color:#555;">
     //                 <b>Booking ID:</b> ${booking._id}
     //               </p>
-      
+
     //               <p style="margin-top:20px;font-size:14px;color:#444;">
-    //                 Our team will contact you shortly.  
+    //                 Our team will contact you shortly.
     //                 For urgent questions, reply directly to this email.
     //               </p>
-      
+
     //             </td>
     //           </tr>
-      
+
     //           <!-- Footer -->
     //           <tr>
     //             <td style="background:#fafafa;color:#777;text-align:center;padding:15px;font-size:12px;">
@@ -247,7 +247,7 @@ export const createBooking = async (req, res) => {
     //               Thank you for traveling with us ❤️
     //             </td>
     //           </tr>
-      
+
     //         </table>
     //       </td>
     //     </tr>
@@ -696,7 +696,7 @@ export const downloadInvoice = async (req, res) => {
       });
 
     // =====================================================
-    // FOOTER (FIXED)
+    // FOOTER (HIGH CONTRAST VERSION)
     // =====================================================
     let footerY = totalsLineY + 80;
 
@@ -704,39 +704,38 @@ export const downloadInvoice = async (req, res) => {
       footerY = doc.page.height - 90;
     }
 
-    doc.moveTo(45, footerY).lineTo(545, footerY).stroke("#e2e8f0");
+    // Strong Separator Line
+    doc.moveTo(45, footerY).lineTo(545, footerY).stroke("#721011"); // Dark Red (bold)
 
+    // Solid Footer Background
     doc
-      .roundedRect(45, footerY + 5, 500, 45, 10)
-      .fillOpacity(0.15)
-      .fill("#e2e8f0")
-      .strokeOpacity(0.3)
-      .stroke("#cbd5e1");
+      .roundedRect(45, footerY + 5, 500, 55, 10)
+      .fill("#888888") // STRONG DARK RED BACKGROUND
+      .stroke("#7a0000"); // Dark border (solid)
 
+    // Footer Heading
     doc
       .font("Helvetica-Bold")
-      .fontSize(11)
-      .fill("#334155")
+      .fontSize(13)
+      .fill("#ffffff") // WHITE TEXT (maximum contrast)
       .text(
         "Thank you for choosing Desert Planners Tourism LLC",
         0,
-        footerY + 12,
-        {
-          align: "center",
-        }
-      );
-
-    doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fill("#64748b")
-      .text(
-        "This invoice is auto-generated and does not require a signature.",
-        0,
-        footerY + 28,
+        footerY + 14,
         { align: "center" }
       );
 
+    // Footer Subtext
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .fill("#ffe5e5") // Soft white-pink contrast
+      .text(
+        "This invoice is auto-generated and does not require a signature.",
+        0,
+        footerY + 32,
+        { align: "center" }
+      );
     doc.end();
   } catch (err) {
     console.log("Invoice Error:", err);
