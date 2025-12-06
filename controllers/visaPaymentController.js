@@ -1,6 +1,7 @@
 import Payment from "../models/Payment.js";
 import VisaBooking from "../models/VisaBooking.js";
-import axios from "axios";
+import { Resend } from "resend";
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // ============================
 // CREATE VISA PAYMENT
@@ -94,17 +95,13 @@ export const createVisaPayment = async (req, res) => {
       language: "EN",
     };
 
-    const response = await axios.post(
-      process.env.PAYMENNT_API_URL,
-      payload,
-      {
-        headers: {
-          "X-Paymennt-Api-Key": process.env.PAYMENT_API_KEY,
-          "X-Paymennt-Api-Secret": process.env.PAYMENT_SECRET_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await axios.post(process.env.PAYMENNT_API_URL, payload, {
+      headers: {
+        "X-Paymennt-Api-Key": process.env.PAYMENT_API_KEY,
+        "X-Paymennt-Api-Secret": process.env.PAYMENT_SECRET_KEY,
+        "Content-Type": "application/json",
+      },
+    });
 
     const gatewayData = response.data || {};
 
@@ -136,7 +133,6 @@ export const createVisaPayment = async (req, res) => {
   }
 };
 
-
 // ============================
 // VISA WEBHOOK
 // ============================
@@ -144,39 +140,38 @@ export const visaPaymentWebhook = async (req, res) => {
   try {
     const data = req.body;
 
-    // Normalize status
+    console.log("🔔 VISA PAYMENT WEBHOOK RECEIVED:", data);
+
     const status = (data.status || "").toLowerCase();
 
-    // Extract booking id safely
     const bookingId =
-      data.orderId ||
-      data.order_id ||
-      data.reference ||
-      data.order?.id ||
-      null;
+      data.orderId || data.order_id || data.reference || data.order?.id || null;
 
     const gatewayTxnId = data.id || data.transactionId || null;
 
-    if (!bookingId) {
-      return res.status(400).send("Missing visa booking id");
-    }
+    if (!bookingId) return res.status(400).send("Missing visa booking id");
 
-    // AMOUNT FIX (fallback)
-    const paidAmount = Number(data.amount || data.total || 0);
+    const booking = await VisaBooking.findById(bookingId);
 
-    // ===============================
-    // PAYMENT SUCCESS
-    // ===============================
+    if (!booking) return res.status(404).send("Visa booking not found");
+
+    const paidAmount = Number(data.amount || booking.finalAmount || 0);
+
+    // -------------------------------------------
+    // PAYMENT SUCCESS FLOW
+    // -------------------------------------------
     if (status === "paid" || status === "success") {
-      await VisaBooking.findByIdAndUpdate(bookingId, {
-        paymentStatus: "paid",
-        status: "completed", // allowed status
-      });
+      console.log("💰 VISA PAYMENT SUCCESS:", bookingId);
+
+      booking.paymentStatus = "paid";
+      booking.status = "completed";
+      await booking.save();
 
       await Payment.findOneAndUpdate(
-        { bookingId, transactionId: gatewayTxnId || undefined },
+        { bookingId },
         {
           bookingId,
+          bookingType: "visa",
           transactionId: gatewayTxnId,
           amount: paidAmount,
           currency: data.currency || "AED",
@@ -185,13 +180,146 @@ export const visaPaymentWebhook = async (req, res) => {
           method: "checkout",
           gateway: "Paymennt",
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, new: true }
       );
+
+      // ================================
+      // EMAILS (ADMIN + CUSTOMER)
+      // ================================
+
+      const adminEmailHtml = `
+<table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial;background:#f4f4f7;padding:20px;">
+  <tr><td align="center">
+
+    <table width="600" cellpadding="0" cellspacing="0"
+      style="background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+
+      <tr>
+        <td style="background:#b40303;color:white;padding:25px 30px;
+          text-align:center;font-size:24px;font-weight:bold;">
+          🛂 New Paid Visa Booking
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:30px;font-size:15px;color:#333;">
+
+          <h3 style="margin:0 0 15px;color:#b40303;">Applicant Details</h3>
+          <p><b>Name:</b> ${booking.fullName}</p>
+          <p><b>Email:</b> ${booking.email}</p>
+          <p><b>Phone:</b> ${booking.phone}</p>
+          <p><b>Passport No:</b> ${booking.passportNumber}</p>
+
+          <hr style="margin:20px 0;border:none;border-top:1px solid #ddd;">
+
+          <h3 style="margin:0 0 15px;color:#b40303;">Visa Package Details</h3>
+          <p><b>Visa Package:</b> ${booking.visaTitle}</p>
+          <p><b>Visa Type:</b> ${booking.visaType || "N/A"}</p>
+          <p><b>Entry Date:</b> ${booking.entryDate}</p>
+          <p><b>Return Date:</b> ${booking.returnDate}</p>
+
+          <hr style="margin:20px 0;border:none;border-top:1px solid #ddd;">
+
+          <h3 style="margin:0 0 15px;color:#b40303;">Payment Summary</h3>
+          <p><b>Total Paid:</b> AED ${booking.finalAmount}</p>
+
+          <p style="margin-top:10px;font-size:14px;color:#555;">
+            <b>Booking ID:</b> ${booking._id}
+          </p>
+
+        </td>
+      </tr>
+
+      <tr>
+        <td style="background:#fafafa;color:#777;text-align:center;
+          padding:12px;font-size:12px;">
+          Desert Planners Tourism LLC ⬩ Dubai, UAE
+        </td>
+      </tr>
+
+    </table>
+
+  </td></tr>
+</table>
+      `;
+
+      const customerEmailHtml = `
+<table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial;background:#f4f4f7;padding:20px;">
+  <tr><td align="center">
+
+    <table width="600" cellpadding="0" cellspacing="0"
+      style="background:white;border-radius:12px;overflow:hidden;
+      box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+
+      <tr>
+        <td style="background:#b40303;color:white;padding:25px 30px;
+          text-align:center;font-size:24px;font-weight:bold;">
+          🎉 Visa Application Payment Successful!
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:30px;font-size:15px;color:#333;">
+          
+          <p>Dear <b>${booking.fullName}</b>,</p>
+          <p>Thank you for your payment. Your visa application has been submitted successfully!</p>
+
+          <h3 style="margin:20px 0 10px;color:#b40303;">Visa Details</h3>
+          <p><b>Visa Package:</b> ${booking.visaTitle}</p>
+          <p><b>Visa Type:</b> ${booking.visaType || "N/A"}</p>
+
+          <h3 style="margin:20px 0 10px;color:#b40303;">Payment Summary</h3>
+          <p><b>Total Paid:</b> AED ${booking.finalAmount}</p>
+
+          <p style="margin-top:15px;font-size:14px;">Our team will contact you shortly for further processing.</p>
+
+          <p style="font-size:14px;color:#777;margin-top:10px;">
+            <b>Booking ID:</b> ${booking._id}
+          </p>
+
+        </td>
+      </tr>
+
+      <tr>
+        <td style="background:#fafafa;color:#777;text-align:center;
+          padding:12px;font-size:12px;">
+          Thank you for choosing Desert Planners ❤️
+        </td>
+      </tr>
+
+    </table>
+
+  </td></tr>
+</table>
+      `;
+
+      // SEND EMAILS
+      try {
+        await resend.emails.send({
+          from: "Desert Planners Tourism LLC <booking@desertplanners.net>",
+          to: process.env.ADMIN_EMAIL,
+          subject: "New Paid Visa Booking",
+          html: adminEmailHtml,
+        });
+      } catch (error) {
+        console.log("❌ Admin email failed:", error);
+      }
+
+      try {
+        await resend.emails.send({
+          from: "Desert Planners Tourism LLC <booking@desertplanners.net>",
+          to: booking.email,
+          subject: "Visa Payment Successful!",
+          html: customerEmailHtml,
+        });
+      } catch (error) {
+        console.log("❌ Customer email failed:", error);
+      }
     }
 
-    // ===============================
-    // PAYMENT FAILED
-    // ===============================
+    // -------------------------------------------
+    // PAYMENT FAILED FLOW
+    // -------------------------------------------
     if (status === "failed" || status === "cancelled") {
       await VisaBooking.findByIdAndUpdate(bookingId, {
         paymentStatus: "failed",
@@ -199,18 +327,14 @@ export const visaPaymentWebhook = async (req, res) => {
       });
 
       await Payment.findOneAndUpdate(
-        { bookingId, transactionId: gatewayTxnId || undefined },
+        { bookingId },
         {
           bookingId,
-          transactionId: gatewayTxnId,
           amount: paidAmount,
-          currency: data.currency || "AED",
           status: "failed",
           paymentInfo: data,
-          method: "checkout",
-          gateway: "Paymennt",
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true }
       );
     }
 
@@ -271,5 +395,3 @@ export const manualConfirmVisaPayment = async (req, res) => {
     });
   }
 };
-
-

@@ -11,30 +11,25 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // Helper: Get file URL from multer
 const fileUrl = (req, field) => req.files?.[field]?.[0]?.path || "";
 
-// 🟢 CREATE VISA BOOKING
+// 🟢 CREATE VISA BOOKING (UPDATED WITH TOUR-STYLE ADMIN EMAIL)
 export const createVisaBooking = async (req, res) => {
   try {
     const data = req.body;
 
-    // ⭐ Ensure transaction amounts are handled as numbers
     const basePrice = Number(data.basePrice || 0);
     const transactionFee = Number(data.transactionFee || 0);
     const finalAmount = Number(data.finalAmount || basePrice + transactionFee);
 
-    // ⭐ Fetch visa title from Visa model
     const visa = await Visa.findById(data.visaId);
 
-    // ⭐ Create booking entry
     const booking = new VisaBooking({
       ...data,
 
-      visaTitle: visa?.title || "", // ⭐ FIX 1 → Save correct visa name
-
+      visaTitle: visa?.title || "",
       basePrice,
       transactionFee,
       finalAmount,
-
-      totalPrice: finalAmount, // ⭐ FIX 2 → Reflect proper amount in admin panel
+      totalPrice: finalAmount,
 
       passportFront: fileUrl(req, "passportFront"),
       passportBack: fileUrl(req, "passportBack"),
@@ -49,11 +44,8 @@ export const createVisaBooking = async (req, res) => {
 
     await booking.save();
 
-    // ====================================================================
-    // ⭐ EMAIL to ADMIN (same design)
-    // ====================================================================
-
-    const filesHtml = `
+    // DOCUMENT LIST HTML
+    const docList = `
       ${
         booking.passportFront
           ? `<li>Passport Front: ${booking.passportFront}</li>`
@@ -69,74 +61,96 @@ export const createVisaBooking = async (req, res) => {
           ? `<li>Passport Cover: ${booking.passportCover}</li>`
           : ""
       }
-      ${booking.photo ? `<li>Photo: ${booking.photo}</li>` : ""}
-      ${
-        booking.accommodation
-          ? `<li>Accommodation: ${booking.accommodation}</li>`
-          : ""
-      }
-      ${booking.emiratesId ? `<li>Emirates ID: ${booking.emiratesId}</li>` : ""}
-      ${booking.extraId ? `<li>Extra ID: ${booking.extraId}</li>` : ""}
-      ${booking.oldVisa ? `<li>Old Visa: ${booking.oldVisa}</li>` : ""}
-      ${
-        booking.flightTicket
-          ? `<li>Flight Ticket: ${booking.flightTicket}</li>`
-          : ""
-      }
+      ${booking.photo ? `<li>Applicant Photo</li>` : ""}
+      ${booking.accommodation ? `<li>Accommodation Proof</li>` : ""}
+      ${booking.emiratesId ? `<li>Emirates ID</li>` : ""}
+      ${booking.extraId ? `<li>Additional ID</li>` : ""}
+      ${booking.oldVisa ? `<li>Old Visa Copy</li>` : ""}
+      ${booking.flightTicket ? `<li>Return Flight Ticket</li>` : ""}
     `;
 
-    const emailHtml = `
-<div style="font-family:'Segoe UI',Arial,sans-serif;line-height:1.7;background:#f7f7f7;padding:25px;">
-  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 5px 18px rgba(0,0,0,0.1);">
+    // ⭐ SAME DESIGN AS TOUR BOOKING EMAIL
+    const emailHtmlAdmin = `
+      <table width="100%" cellpadding="0" cellspacing="0"
+        style="font-family:Arial;background:#f4f4f7;padding:20px;">
+        <tr><td align="center">
 
-    <div style="background:linear-gradient(90deg,#e82429,#721011);padding:22px 0;text-align:center;color:#fff;">
-      <h1 style="margin:0;font-size:26px;font-weight:700;">📄 UAE Visa Application</h1>
-      <p style="margin:5px 0 0;font-size:15px;opacity:0.9;">New Visa Booking Received</p>
-    </div>
+          <table width="600" cellpadding="0" cellspacing="0"
+            style="background:white;border-radius:12px;overflow:hidden;
+            box-shadow:0 4px 20px rgba(0,0,0,0.1);">
 
-    <div style="padding:28px 30px;">
+            <!-- HEADER -->
+            <tr>
+              <td style="background:#b40303;color:white;padding:25px 30px;
+                text-align:center;font-size:24px;font-weight:bold;">
+                📝 New Visa Booking Received
+              </td>
+            </tr>
 
-      <h2 style="margin-top:0;color:#721011;">Applicant: ${
-        booking.fullName
-      }</h2>
+            <!-- BODY -->
+            <tr>
+              <td style="padding:30px;font-size:15px;color:#333;">
 
-      <div style="background:#fafafa;border:1px solid #eee;border-radius:12px;padding:18px 20px;margin-top:18px;">
-        <h3 style="color:#721011;margin-top:0;">🧑 Applicant Details</h3>
-        <p><b>Name:</b> ${booking.fullName}</p>
-        <p><b>Email:</b> ${booking.email}</p>
-        <p><b>Contact:</b> ${booking.phone}</p>
-        <p><b>Nationality:</b> ${booking.nationality}</p>
-        <p><b>Passport No:</b> ${booking.passportNumber}</p>
-        <p><b>Visa Package:</b> ${booking.visaTitle}</p>
-        <p><b>Visa Type:</b> ${booking.visaType}</p>
-        <p><b>Booking ID:</b> ${booking._id}</p>
+                <h3 style="margin:0 0 15px;color:#b40303;">Applicant Information</h3>
+                <p><b>Name:</b> ${booking.fullName}</p>
+                <p><b>Email:</b> ${booking.email}</p>
+                <p><b>Phone:</b> ${booking.phone}</p>
+                <p><b>Passport No:</b> ${booking.passportNumber}</p>
 
-        <br/>
-        <p><b>Base Price:</b> AED ${booking.basePrice.toFixed(2)}</p>
-        <p><b>Transaction Fee (3.75%):</b> AED ${booking.transactionFee.toFixed(
-          2
-        )}</p>
-        <p><b>Final Amount:</b> AED ${booking.finalAmount.toFixed(2)}</p>
-      </div>
+                <hr style="margin:25px 0;border:none;border-top:1px solid #ddd;">
 
-      <div style="background:#fafafa;border:1px solid #eee;border-radius:12px;padding:18px 20px;margin:20px 0;">
-        <h3 style="color:#721011;margin-top:0;">📎 Uploaded Documents</h3>
-        <ul style="padding-left:18px;color:#404041;margin:0;">${filesHtml}</ul>
-      </div>
+                <h3 style="margin:0 0 15px;color:#b40303;">Visa Details</h3>
+                <p><b>Package:</b> ${booking.visaTitle}</p>
+                <p><b>Visa Type:</b> ${booking.visaType}</p>
+                <p><b>Entry Date:</b> ${booking.entryDate}</p>
+                <p><b>Return Date:</b> ${booking.returnDate}</p>
 
-    </div>
-  </div>
-</div>
-`;
+                <hr style="margin:25px 0;border:none;border-top:1px solid #ddd;">
+
+                <h3 style="margin:0 0 15px;color:#b40303;">Payment Summary</h3>
+                <p><b>Base Price:</b> AED ${booking.basePrice.toFixed(2)}</p>
+                <p><b>Transaction Fee:</b> AED ${booking.transactionFee.toFixed(
+                  2
+                )}</p>
+                <p style="font-size:18px;margin:10px 0;color:#b40303;">
+                  <b>Total Amount:</b> AED ${booking.finalAmount.toFixed(2)}
+                </p>
+
+                <p style="margin-top:10px;font-size:14px;color:#555;">
+                  <b>Booking ID:</b> ${booking._id}
+                </p>
+
+                <hr style="margin:25px 0;border:none;border-top:1px solid #ddd;">
+
+                <h3 style="margin:0 0 15px;color:#b40303;">Uploaded Documents</h3>
+                <ul style="padding-left:18px;color:#555;font-size:14px;">
+                  ${docList}
+                </ul>
+
+              </td>
+            </tr>
+
+            <!-- FOOTER -->
+            <tr>
+              <td style="background:#fafafa;color:#777;text-align:center;
+                padding:15px;font-size:12px;">
+                Desert Planners Tourism LLC ⬩ Dubai, UAE <br>
+                This is an automated visa booking alert.
+              </td>
+            </tr>
+
+          </table>
+
+        </td></tr>
+      </table>
+    `;
 
     await resend.emails.send({
-      from: "Desert Planners Tourism LLC <onboarding@resend.dev>",
+      from: "Desert Planners Tourism LLC <booking@desertplanners.net>",
       to: process.env.ADMIN_EMAIL,
-      subject: "📄 New Visa Booking Received",
-      html: emailHtml,
+      subject: "New Visa Booking Received",
+      html: emailHtmlAdmin,
     });
-
-    // ====================================================================
 
     res.status(201).json({
       message: "Visa booking submitted successfully",
@@ -432,10 +446,11 @@ export const downloadVisaInvoice = async (req, res) => {
       .fill("#f4f7fb")
       .stroke("#d2dae4");
 
-    const summaryRows = [
-      ["Base Price", `AED ${fmt(base)}`],
-      ["Transaction Fee (3.75%)", `AED ${fmt(fee)}`],
-    ];
+      const summaryRows = [
+        ["Base Price", `AED ${fmt(basePrice)}`],
+        ["Transaction Fee (3.75%)", `AED ${fmt(transactionFee)}`],
+      ];
+      
 
     // ---------------------------------------------
     // RENDER ROWS
@@ -478,7 +493,7 @@ export const downloadVisaInvoice = async (req, res) => {
       .font("Helvetica-Bold")
       .fontSize(15)
       .fill("#1e40af")
-      .text(`AED ${fmt(finalAmt)}`, pillX + 12, pillY + 8, {
+      .text(`AED ${fmt(finalAmount)}`, pillX + 12, pillY + 8, {
         width: pillW - 24,
         align: "right",
       });
