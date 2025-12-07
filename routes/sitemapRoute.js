@@ -163,7 +163,7 @@ router.get("/sitemap.html", async (req, res) => {
     const tourCategoryList = [...new Set(tours.map((t) => t.category?.slug))]
       .filter(Boolean)
       .map((c) => ({
-        name: `Tour Category: ${c}`,
+        name: c,
         url: `${baseUrl}/tours/${c}`,
       }));
 
@@ -180,7 +180,7 @@ router.get("/sitemap.html", async (req, res) => {
     ]
       .filter(Boolean)
       .map((c) => ({
-        name: `Visa Category: ${c}`,
+        name: c,
         url: `${baseUrl}/visa/${c}`,
       }));
 
@@ -197,7 +197,7 @@ router.get("/sitemap.html", async (req, res) => {
     ]
       .filter(Boolean)
       .map((c) => ({
-        name: `Holiday Category: ${c}`,
+        name: c,
         url: `${baseUrl}/holidays/${c}`,
       }));
 
