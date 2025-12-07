@@ -157,14 +157,13 @@ router.get("/sitemap.html", async (req, res) => {
     const tours = await Tour.find({}).populate("category", "slug name").lean();
     const tourList = tours.map((t) => ({
       name: t.title,
-      url: `${baseUrl}/tours/${t.slug}`,
+      url: `${baseUrl}/tours/${t.category?.slug}/${t.slug}`,
     }));
 
     const tourCategoryList = [...new Set(tours.map((t) => t.category?.slug))]
       .filter(Boolean)
       .map((c) => ({
-        name: `Tour Category: ${c}`,
-        url: `${baseUrl}/tours/category/${c}`,
+        url: `${baseUrl}/tours/${c}`,
       }));
 
     // VISAS
@@ -180,7 +179,6 @@ router.get("/sitemap.html", async (req, res) => {
     ]
       .filter(Boolean)
       .map((c) => ({
-        name: `Visa Category: ${c}`,
         url: `${baseUrl}/visa/${c}`,
       }));
 
@@ -197,7 +195,6 @@ router.get("/sitemap.html", async (req, res) => {
     ]
       .filter(Boolean)
       .map((c) => ({
-        name: `Holiday Category: ${c}`,
         url: `${baseUrl}/holidays/${c}`,
       }));
 
