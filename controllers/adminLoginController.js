@@ -128,7 +128,7 @@ export const forgotPassword = async (req, res) => {
     user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
     await user.save();
 
-    const resetURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const resetURL = `${process.env.FRONTEND_URL}/admin/reset-password/${resetToken}`;
     await resend.emails.send({
       from: "no-reply@desertplanners.net", // ✔ Correct domain
       to: user.email,

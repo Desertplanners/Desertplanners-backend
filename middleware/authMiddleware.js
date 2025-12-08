@@ -44,10 +44,12 @@ export const adminAuth = asyncHandler(async (req, res, next) => {
 
     const user = await User.findById(decoded.id).select("-password");
 
+    // ⭐ USER DELETED FROM DATABASE → AUTO LOGOUT
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(401).json({ message: "User no longer exists" });
     }
 
+    // ⭐ USER NOT ADMIN → AUTO LOGOUT
     if (!user.isAdmin) {
       return res.status(403).json({ message: "Admin access denied" });
     }
@@ -55,7 +57,7 @@ export const adminAuth = asyncHandler(async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ message: "Invalid or expired token" });
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 });
 
