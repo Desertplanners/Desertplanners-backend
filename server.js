@@ -152,6 +152,8 @@ app.set("io", io);
 // ==========================
 // 🟢 Start server
 // ==========================
+console.log("RESEND KEY:", process.env.RESEND_API_KEY);
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

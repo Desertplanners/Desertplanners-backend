@@ -1,23 +1,19 @@
 import express from "express";
 import {
-  registerAdmin,
-  loginAdmin,
-  getAdminProfile,
-  updateAdminProfile,
+  adminLogin,
   getAdminOverview,
-} from "../controllers/adminController.js";
-
-import { protectAdmin } from "../middleware/adminMiddleware.js";
-
+  removeAdminAccess,
+  forgotPassword,
+  resetPassword,
+} from "../controllers/adminLoginController.js";
+import { adminAuth } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
-// There are Admin Routes 
-router.post("/register", registerAdmin);
-router.post("/login", loginAdmin);
-router.get("/overview", protectAdmin, getAdminOverview);
-// new routes for logged-in admin
-router.get("/me", protectAdmin, getAdminProfile);
-router.put("/me", protectAdmin, updateAdminProfile);
+// ====================== ADMIN LOGIN ROUTE ======================
+router.post("/login", adminLogin);
+router.put("/remove-admin", adminAuth, removeAdminAccess);
+router.get("/overview", adminAuth, getAdminOverview);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password/:token", resetPassword);
 
 export default router;
-//  There are admin Routes 
