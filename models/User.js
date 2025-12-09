@@ -2,45 +2,51 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
 const UserSchema = new mongoose.Schema({
-  name: { 
-    type: String, 
-    required: true 
+  name: {
+    type: String,
+    required: true,
   },
 
   email: {
     type: String,
     required: true,
     unique: true,
-    lowercase: true,   // 👈 Normalize email
-    trim: true
+    lowercase: true, // 👈 Normalize email
+    trim: true,
   },
 
-  password: { 
-    type: String, 
-    required: true 
+  password: {
+    type: String,
+    required: true,
   },
 
   mobile: { type: String },
   country: { type: String },
 
-  profilePhoto: { 
-    type: String, 
-    default: "" 
+  profilePhoto: {
+    type: String,
+    default: "",
   },
 
   // 🔥 ADMIN FLAG
-  isAdmin: { 
-    type: Boolean, 
-    default: false 
+  isAdmin: {
+    type: Boolean,
+    default: false,
+  },
+
+  // 🔥 SUPER ADMIN — only he can grant/revoke admin access
+  isSuperAdmin: {
+    type: Boolean,
+    default: false,
   },
 
   // ⭐ FORGOT PASSWORD SYSTEM
   resetPasswordToken: { type: String },
   resetPasswordExpire: { type: Date },
 
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
+  createdAt: {
+    type: Date,
+    default: Date.now,
   },
 });
 

@@ -95,12 +95,24 @@ export const getAdminOverview = async (req, res) => {
 
 export const removeAdminAccess = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const currentUser = await User.findById(req.user.id);
 
+    // ❌ Only Super Admin can remove admin access
+    if (!currentUser.isSuperAdmin) {
+      return res.status(403).json({ message: "Only Super Admin can remove admin access" });
+    }
+
+    const { userId } = req.body;
     const user = await User.findById(userId);
+
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    user.isAdmin = false; // REMOVE ADMIN ACCESS
+    // ❌ A super admin cannot be removed
+    if (user.isSuperAdmin) {
+      return res.status(403).json({ message: "Super Admin cannot be demoted" });
+    }
+
+    user.isAdmin = false;
     await user.save();
 
     res.json({ message: "Admin access removed successfully" });
@@ -108,6 +120,7 @@ export const removeAdminAccess = async (req, res) => {
     res.status(500).json({ message: "Error removing admin access" });
   }
 };
+
 
 export const forgotPassword = async (req, res) => {
   try {

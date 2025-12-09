@@ -168,12 +168,19 @@ export const updateUserByAdmin = async (req, res) => {
 // ===================== PROMOTE USER TO ADMIN (ADMIN ONLY) =====================
 export const promoteUserToAdmin = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const currentUser = await User.findById(req.user.id);
 
+    // ❌ Only Super Admin can promote
+    if (!currentUser.isSuperAdmin) {
+      return res.status(403).json({ message: "Only Super Admin can promote users" });
+    }
+
+    const { userId } = req.body;
     const user = await User.findById(userId);
+
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    user.isAdmin = true; // 🔥 HERE USER BECOMES ADMIN
+    user.isAdmin = true;
     await user.save();
 
     res.json({ message: "User promoted to admin successfully" });
