@@ -55,8 +55,15 @@ export const addTour = async (req, res) => {
     const {
       title,
       description,
-      priceAdult, // ⭐ NEW
-      priceChild, // ⭐ NEW
+
+      // ⭐ ACTUAL PRICES
+      priceAdult,
+      priceChild,
+
+      // ⭐ DISCOUNT PRICES
+      discountPriceAdult,
+      discountPriceChild,
+
       duration,
       category,
       highlights,
@@ -76,15 +83,15 @@ export const addTour = async (req, res) => {
     if (
       !title ||
       !description ||
-      !priceAdult || // ⭐ REQUIRED
+      priceAdult === undefined ||
       !duration ||
       !category ||
       !startDate ||
       !endDate
     ) {
-      return res
-        .status(400)
-        .json({ message: "All required fields must be filled." });
+      return res.status(400).json({
+        message: "All required fields must be filled.",
+      });
     }
 
     // ⭐ CATEGORY VALIDATION
@@ -122,20 +129,48 @@ export const addTour = async (req, res) => {
     const parsedEnd = new Date(endDate);
 
     if (isNaN(parsedStart) || isNaN(parsedEnd)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid startDate or endDate format." });
+      return res.status(400).json({
+        message: "Invalid startDate or endDate format.",
+      });
     }
 
-    // ⭐ CREATE NEW TOUR OBJECT
+    // ⭐ DISCOUNT PRICE VALIDATION
+    if (
+      discountPriceAdult !== undefined &&
+      Number(discountPriceAdult) >= Number(priceAdult)
+    ) {
+      return res.status(400).json({
+        message: "Discount price (Adult) must be less than actual price",
+      });
+    }
+
+    if (
+      discountPriceChild !== undefined &&
+      priceChild &&
+      Number(discountPriceChild) >= Number(priceChild)
+    ) {
+      return res.status(400).json({
+        message: "Discount price (Child) must be less than actual price",
+      });
+    }
+
+    // ⭐ CREATE NEW TOUR
     const tour = new Tour({
       title,
       slug: slugify(title, { lower: true, strict: true }),
       description,
 
-      // ⭐ UPDATED PRICE FIELDS
+      // ⭐ ACTUAL PRICES
       priceAdult: Number(priceAdult),
       priceChild: priceChild ? Number(priceChild) : null,
+
+      // ⭐ DISCOUNT PRICES
+      discountPriceAdult: discountPriceAdult
+        ? Number(discountPriceAdult)
+        : null,
+      discountPriceChild: discountPriceChild
+        ? Number(discountPriceChild)
+        : null,
 
       duration,
       category: foundCategory._id,
@@ -159,7 +194,7 @@ export const addTour = async (req, res) => {
 
     await tour.save();
 
-    // ⭐ Create default SEO entry for this tour
+    // ⭐ CREATE DEFAULT SEO
     await SEO.create({
       parentType: "tour",
       parentId: tour._id,
@@ -196,8 +231,15 @@ export const updateTour = async (req, res) => {
     const {
       title,
       description,
+
+      // ⭐ ACTUAL PRICES
       priceAdult,
       priceChild,
+
+      // ⭐ DISCOUNT PRICES
+      discountPriceAdult,
+      discountPriceChild,
+
       duration,
       category,
       highlights,
@@ -211,7 +253,7 @@ export const updateTour = async (req, res) => {
       maxGuests,
       termsAndConditions,
       relatedTours,
-      removeGalleryImages, // ⭐ NEW – images to remove
+      removeGalleryImages,
     } = req.body;
 
     console.log("🟠 Updating Tour:", id);
@@ -226,13 +268,13 @@ export const updateTour = async (req, res) => {
       tour.mainImage = req.files.mainImage[0].path;
     }
 
-    // ⭐⭐⭐ GALLERY IMAGES UPDATE (FULL FIX)
+    // ⭐⭐⭐ GALLERY IMAGES UPDATE
     let updatedGallery = [...tour.galleryImages];
 
-    // Step 1: Remove old images (coming from frontend)
+    // Remove images
     if (removeGalleryImages) {
       try {
-        const removeList = JSON.parse(removeGalleryImages); // array of URLs
+        const removeList = JSON.parse(removeGalleryImages);
         updatedGallery = updatedGallery.filter(
           (img) => !removeList.includes(img)
         );
@@ -241,13 +283,12 @@ export const updateTour = async (req, res) => {
       }
     }
 
-    // Step 2: Add newly uploaded images
+    // Add new images
     if (req.files?.galleryImages?.length > 0) {
       const newImages = req.files.galleryImages.map((f) => f.path);
       updatedGallery = [...updatedGallery, ...newImages];
     }
 
-    // Step 3: Save final gallery
     tour.galleryImages = updatedGallery;
 
     // ⭐ BASIC FIELDS UPDATE
@@ -263,6 +304,27 @@ export const updateTour = async (req, res) => {
     if (termsAndConditions !== undefined)
       tour.termsAndConditions = termsAndConditions;
 
+    // ⭐ DISCOUNT PRICE VALIDATION
+    if (
+      discountPriceAdult !== undefined &&
+      (priceAdult ?? tour.priceAdult) !== undefined &&
+      Number(discountPriceAdult) >= Number(priceAdult ?? tour.priceAdult)
+    ) {
+      return res.status(400).json({
+        message: "Discount price (Adult) must be less than actual price",
+      });
+    }
+
+    if (
+      discountPriceChild !== undefined &&
+      (priceChild ?? tour.priceChild) !== undefined &&
+      Number(discountPriceChild) >= Number(priceChild ?? tour.priceChild)
+    ) {
+      return res.status(400).json({
+        message: "Discount price (Child) must be less than actual price",
+      });
+    }
+
     // ⭐ PRICE UPDATE
     if (priceAdult !== undefined) {
       tour.priceAdult = Number(priceAdult);
@@ -272,11 +334,23 @@ export const updateTour = async (req, res) => {
       tour.priceChild = priceChild ? Number(priceChild) : null;
     }
 
-    // ⭐ DATES VALIDATION
+    if (discountPriceAdult !== undefined) {
+      tour.discountPriceAdult = discountPriceAdult
+        ? Number(discountPriceAdult)
+        : null;
+    }
+
+    if (discountPriceChild !== undefined) {
+      tour.discountPriceChild = discountPriceChild
+        ? Number(discountPriceChild)
+        : null;
+    }
+
+    // ⭐ DATE VALIDATION
     if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
-      return res
-        .status(400)
-        .json({ message: "End date cannot be before start date" });
+      return res.status(400).json({
+        message: "End date cannot be before start date",
+      });
     }
 
     if (startDate) tour.startDate = new Date(startDate);
@@ -301,7 +375,7 @@ export const updateTour = async (req, res) => {
       tour.cancellationPolicy = parseCancellationPolicy(cancellationPolicy);
     }
 
-    // ⭐ Auto update SEO fields only if provided
+    // ⭐ SEO UPDATE
     await SEO.findOneAndUpdate(
       { parentType: "tour", parentId: tour._id },
       {
@@ -335,7 +409,10 @@ export const getTours = async (req, res) => {
   try {
     const tours = await Tour.find()
       .populate("category", "name")
-      .populate("relatedTours", "title price mainImage");
+      .populate(
+        "relatedTours",
+        "title priceAdult discountPriceAdult mainImage slug"
+      );
     res.json(tours);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -372,8 +449,7 @@ export const getTourBySlug = async (req, res) => {
       parentType: "tour",
       parentId: tour._id.toString(),
     });
-       
-    
+
     res.json({
       tour,
       seo,
@@ -454,7 +530,10 @@ export const getToursByCategory = async (req, res) => {
 
     const tours = await Tour.find({ category: category._id })
       .populate("category", "name")
-      .populate("relatedTours", "title price mainImage");
+      .populate(
+        "relatedTours",
+        "title priceAdult discountPriceAdult mainImage slug"
+      );
 
     res.json(tours);
   } catch (err) {

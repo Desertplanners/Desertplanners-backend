@@ -1,5 +1,3 @@
-// ⭐ UPDATED FULL FILE BELOW
-
 import mongoose from "mongoose";
 
 const tourSchema = new mongoose.Schema(
@@ -8,8 +6,17 @@ const tourSchema = new mongoose.Schema(
     slug: { type: String, unique: true, lowercase: true },
     description: { type: String, required: true },
 
+    // ⭐ Adult Price (ACTUAL)
     priceAdult: { type: Number, required: true },
+
+    // ⭐ Adult Discount Price
+    discountPriceAdult: { type: Number, default: null },
+
+    // ⭐ Child Price (ACTUAL)
     priceChild: { type: Number, default: null },
+
+    // ⭐ Child Discount Price
+    discountPriceChild: { type: Number, default: null },
 
     duration: { type: String, required: true },
 
@@ -54,19 +61,18 @@ const tourSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ⭐ FIX: CLEAN SEO-FRIENDLY SLUG GENERATOR
+// ⭐ CLEAN SEO-FRIENDLY SLUG GENERATOR
 tourSchema.pre("save", function (next) {
   if (!this.slug || this.isModified("title")) {
-
     const cleanTitle = this.title
       .toLowerCase()
-      .replace(/\+/g, "")        // remove +
-      .replace(/&/g, "")         // remove &
-      .replace(/\//g, "")        // remove /
-      .replace(/%/g, "")         // remove %
-      .replace(/[^a-z0-9\s-]/g, "")  // remove special chars
-      .replace(/\s+/g, "-")      // spaces → dash
-      .replace(/-+/g, "-")       // multiple dash → single dash
+      .replace(/\+/g, "")
+      .replace(/&/g, "")
+      .replace(/\//g, "")
+      .replace(/%/g, "")
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
       .trim();
 
     this.slug = cleanTitle;
@@ -76,4 +82,3 @@ tourSchema.pre("save", function (next) {
 
 const Tour = mongoose.model("Tour", tourSchema);
 export default Tour;
-  
