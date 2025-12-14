@@ -336,22 +336,17 @@ export const updateTour = async (req, res) => {
     if (priceAdult !== undefined) {
       tour.priceAdult = Number(priceAdult);
     }
-
     if (priceChild !== undefined) {
-      tour.priceChild = priceChild ? Number(priceChild) : null;
+      tour.priceChild =
+        priceChild === "" || priceChild === null ? null : Number(priceChild);
     }
-
-    if (discountPriceAdult !== undefined) {
-      tour.discountPriceAdult = discountPriceAdult
-        ? Number(discountPriceAdult)
-        : null;
-    }
-
     if (discountPriceChild !== undefined) {
-      tour.discountPriceChild = discountPriceChild
-        ? Number(discountPriceChild)
-        : null;
+      tour.discountPriceChild =
+        discountPriceChild === "" || discountPriceChild === null
+          ? null
+          : Number(discountPriceChild);
     }
+
 
     // ⭐ DATE VALIDATION
     if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
