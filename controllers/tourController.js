@@ -146,7 +146,11 @@ export const addTour = async (req, res) => {
 
     if (
       discountPriceChild !== undefined &&
-      priceChild &&
+      discountPriceChild !== null &&
+      discountPriceChild !== "" &&
+      priceChild !== undefined &&
+      priceChild !== null &&
+      priceChild !== "" &&
       Number(discountPriceChild) >= Number(priceChild)
     ) {
       return res.status(400).json({
@@ -317,7 +321,10 @@ export const updateTour = async (req, res) => {
 
     if (
       discountPriceChild !== undefined &&
-      (priceChild ?? tour.priceChild) !== undefined &&
+      discountPriceChild !== null &&
+      discountPriceChild !== "" &&
+      (priceChild ?? tour.priceChild) !== null &&
+      (priceChild ?? tour.priceChild) !== "" &&
       Number(discountPriceChild) >= Number(priceChild ?? tour.priceChild)
     ) {
       return res.status(400).json({
