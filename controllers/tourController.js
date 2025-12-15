@@ -169,12 +169,15 @@ export const addTour = async (req, res) => {
       priceChild: priceChild ? Number(priceChild) : null,
 
       // ⭐ DISCOUNT PRICES
-      discountPriceAdult: discountPriceAdult
-        ? Number(discountPriceAdult)
-        : null,
-      discountPriceChild: discountPriceChild
-        ? Number(discountPriceChild)
-        : null,
+      discountPriceAdult:
+        discountPriceAdult === "" || discountPriceAdult === null
+          ? null
+          : Number(discountPriceAdult),
+
+      discountPriceChild:
+        discountPriceChild === "" || discountPriceChild === null
+          ? null
+          : Number(discountPriceChild),
 
       duration,
       category: foundCategory._id,
@@ -309,9 +312,10 @@ export const updateTour = async (req, res) => {
       tour.termsAndConditions = termsAndConditions;
 
     // ⭐ DISCOUNT PRICE VALIDATION
+    // ⭐ DISCOUNT PRICE VALIDATION (CLEAN)
+
     if (
-      discountPriceAdult !== undefined &&
-      (priceAdult ?? tour.priceAdult) !== undefined &&
+      discountPriceAdult &&
       Number(discountPriceAdult) >= Number(priceAdult ?? tour.priceAdult)
     ) {
       return res.status(400).json({
@@ -320,11 +324,7 @@ export const updateTour = async (req, res) => {
     }
 
     if (
-      discountPriceChild !== undefined &&
-      discountPriceChild !== null &&
-      discountPriceChild !== "" &&
-      (priceChild ?? tour.priceChild) !== null &&
-      (priceChild ?? tour.priceChild) !== "" &&
+      discountPriceChild &&
       Number(discountPriceChild) >= Number(priceChild ?? tour.priceChild)
     ) {
       return res.status(400).json({
@@ -332,21 +332,30 @@ export const updateTour = async (req, res) => {
       });
     }
 
-    // ⭐ PRICE UPDATE
+    // ⭐ PRICE UPDATE (FINAL & CLEAN)
+
     if (priceAdult !== undefined) {
       tour.priceAdult = Number(priceAdult);
     }
+
+    if (discountPriceAdult !== undefined) {
+      tour.discountPriceAdult =
+        discountPriceAdult === "" || discountPriceAdult === null
+          ? null
+          : Number(discountPriceAdult);
+    }
+
     if (priceChild !== undefined) {
       tour.priceChild =
         priceChild === "" || priceChild === null ? null : Number(priceChild);
     }
+
     if (discountPriceChild !== undefined) {
       tour.discountPriceChild =
         discountPriceChild === "" || discountPriceChild === null
           ? null
           : Number(discountPriceChild);
     }
-
 
     // ⭐ DATE VALIDATION
     if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
