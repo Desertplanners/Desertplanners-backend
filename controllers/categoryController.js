@@ -95,3 +95,39 @@ export const deleteCategory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+// 🔵 Get single category (with description)
+export const getCategoryById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const category = await Category.findById(id);
+    if (!category)
+      return res.status(404).json({ message: "Category not found" });
+
+    res.json(category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+// 🟣 Update category description only (SEO / Content)
+export const updateCategoryDescription = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description } = req.body;
+
+    const category = await Category.findById(id);
+    if (!category)
+      return res.status(404).json({ message: "Category not found" });
+
+    category.description = description || "";
+    await category.save();
+
+    res.json({ message: "Category content updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

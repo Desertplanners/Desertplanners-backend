@@ -15,6 +15,12 @@ const categorySchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+
+    // ⭐ NEW FIELD — WordPress-style content
+    description: {
+      type: String, // HTML string
+      default: "",
+    },
   },
   { timestamps: true }
 );

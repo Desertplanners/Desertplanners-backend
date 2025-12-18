@@ -2,22 +2,30 @@ import express from "express";
 import {
   addCategory,
   getCategories,
+  getCategoryById,              // ⭐ NEW
   deleteCategory,
   editCategory,
+  updateCategoryDescription,    // ⭐ NEW
 } from "../controllers/categoryController.js";
 
 const router = express.Router();
 
-// Admin can add new category
+// 🟢 Add new category
 router.post("/", addCategory);
 
-// Fetch all categories
+// 🟢 Fetch all categories
 router.get("/", getCategories);
 
-// Admin can delete a category
+// 🔵 Get single category (for SEO editor)
+router.get("/:id", getCategoryById);
+
+// 🟣 Update ONLY category description (SEO / Content editor)
+router.put("/:id/description", updateCategoryDescription);
+
+// 🔵 Edit category name / slug
+router.put("/:id", editCategory);
+
+// 🟠 Delete category
 router.delete("/:id", deleteCategory);
 
-router.put("/:id", editCategory); // Edit category by ID ✅
-
 export default router;
- 
