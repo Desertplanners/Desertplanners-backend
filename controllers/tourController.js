@@ -77,6 +77,7 @@ export const addTour = async (req, res) => {
       maxGuests,
       termsAndConditions,
       relatedTours,
+      pickupDropRequired,
     } = req.body;
 
     // ⭐ REQUIRED FIELD CHECK
@@ -197,6 +198,7 @@ export const addTour = async (req, res) => {
       maxGuests: maxGuests ? Number(maxGuests) : 12,
       termsAndConditions: termsAndConditions || "",
       relatedTours: parseArray(relatedTours),
+      pickupDropRequired: pickupDropRequired === "true",
     });
 
     await tour.save();
@@ -261,6 +263,7 @@ export const updateTour = async (req, res) => {
       termsAndConditions,
       relatedTours,
       removeGalleryImages,
+      pickupDropRequired,
     } = req.body;
 
     console.log("🟠 Updating Tour:", id);
@@ -303,7 +306,9 @@ export const updateTour = async (req, res) => {
       tour.title = title;
       tour.slug = slugify(title, { lower: true });
     }
-
+    if (pickupDropRequired !== undefined) {
+      tour.pickupDropRequired = pickupDropRequired === "true";
+    }
     if (description) tour.description = description;
     if (duration) tour.duration = duration;
     if (timings) tour.timings = timings;

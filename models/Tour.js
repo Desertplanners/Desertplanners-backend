@@ -47,6 +47,11 @@ const tourSchema = new mongoose.Schema(
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
 
+    // ⭐ Pickup & Drop Required
+    pickupDropRequired: {
+      type: Boolean,
+      default: false,
+    },
     maxGuests: { type: Number, default: 12 },
 
     termsAndConditions: { type: String, default: "" },
