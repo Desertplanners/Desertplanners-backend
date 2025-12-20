@@ -43,6 +43,8 @@ import seoRoutes from "./routes/seoRoutes.js"
 import sitemapRoute from "./routes/sitemapRoute.js";
 import robotsRoute from "./routes/robotsRoute.js";
 import blogCategoryRoutes from "./routes/blogCategoryRoutes.js";
+import blogRoutes from "./routes/blogRoutes.js";
+
 
 // Cloudinary
 import "./config/cloudinary.js";
@@ -116,6 +118,7 @@ app.use("/api/visa-payment", visaPaymentRoutes);
 app.use("/api/holiday-categories", holidayCategoryRoutes);
 app.use("/api/blog-categories", blogCategoryRoutes);
 app.use("/api/holiday-tour", holidayTourRoutes);
+app.use("/api/blogs", blogRoutes);
 app.use("/", sitemapRoute);
 // ⭐ ADD THIS LINE → SEO API
 app.use("/api/seo", seoRoutes);

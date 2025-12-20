@@ -1,6 +1,6 @@
 import BlogCategory from "../models/blogCategoryModel.js";
 import slugify from "slugify";
-// import Blog from "../models/Blog.js"; // ⭐ Blog model (important)
+import Blog from "../models/Blog.js"; // ⭐ Blog model (important)
 
 // ---------------------------------------------
 // ⭐ ADD NEW BLOG CATEGORY
