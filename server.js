@@ -44,6 +44,7 @@ import sitemapRoute from "./routes/sitemapRoute.js";
 import robotsRoute from "./routes/robotsRoute.js";
 import blogCategoryRoutes from "./routes/blogCategoryRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
+import couponRoutes from "./routes/couponRoutes.js";
 
 
 // Cloudinary
@@ -119,6 +120,7 @@ app.use("/api/holiday-categories", holidayCategoryRoutes);
 app.use("/api/blog-categories", blogCategoryRoutes);
 app.use("/api/holiday-tour", holidayTourRoutes);
 app.use("/api/blogs", blogRoutes);
+app.use("/api/coupons", couponRoutes);
 app.use("/", sitemapRoute);
 // ⭐ ADD THIS LINE → SEO API
 app.use("/api/seo", seoRoutes);

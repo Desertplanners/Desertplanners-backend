@@ -39,6 +39,10 @@ const BookingSchema = new mongoose.Schema(
     pickupPoint: { type: String, trim: true },
     dropPoint: { type: String, trim: true },
 
+    // ⭐ COUPON INFO
+    couponCode: { type: String, default: null },
+    couponDiscount: { type: Number, default: 0 },
+    
     // ⭐ SUBTOTAL + FEES → FIXED
     subtotal: { type: Number, default: 0 },
     transactionFee: { type: Number, default: 0 },

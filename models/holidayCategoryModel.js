@@ -4,8 +4,25 @@ import slugify from "slugify";
 
 const holidayCategorySchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, unique: true, trim: true },
-    slug: { type: String, unique: true, trim: true, lowercase: true },
+    name: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+
+    slug: {
+      type: String,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+
+    // ⭐ NEW — WordPress-style HTML content
+    description: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

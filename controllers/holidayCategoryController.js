@@ -101,3 +101,54 @@ export const getHolidayPackagesByCategory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// 🟣 Get single holiday category by slug (FRONTEND)
+export const getHolidayCategoryBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const category = await HolidayCategory.findOne({ slug });
+    if (!category)
+      return res.status(404).json({ message: "Category not found" });
+
+    res.json(category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+// 🟣 Get single holiday category (for SEO / Content Editor)
+export const getHolidayCategoryById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const category = await HolidayCategory.findById(id);
+    if (!category)
+      return res.status(404).json({ message: "Category not found" });
+
+    res.json(category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+// 🟣 Update holiday category description (HTML content)
+export const updateHolidayCategoryDescription = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description } = req.body;
+
+    const category = await HolidayCategory.findById(id);
+    if (!category)
+      return res.status(404).json({ message: "Category not found" });
+
+    category.description = description || "";
+    await category.save();
+
+    res.json({ message: "Holiday category content updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

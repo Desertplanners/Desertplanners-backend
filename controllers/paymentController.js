@@ -34,7 +34,11 @@ export const createPayment = async (req, res) => {
       });
     }
 
+    const subtotal = Number(booking.subtotal || 0);
+    const fee = Number(booking.transactionFee || 0);
+    const discount = Number(booking.couponDiscount || 0);
     const amount = Number(booking.totalPrice || 0);
+
     if (!amount || amount <= 0) {
       return res.status(400).json({
         success: false,
@@ -47,24 +51,20 @@ export const createPayment = async (req, res) => {
       requestId: `REQ-${booking._id}`,
       orderId: booking._id.toString(),
       currency: "AED",
-      amount,
-      totals: {
-        subtotal: amount,
-        tax: 0,
-        shipping: 0,
-        handling: 0,
-        discount: 0,
-        skipTotalsValidation: true,
-      },
+    
+      // ⭐ ONLY TRUST THIS
+      amount: booking.totalPrice, // discounted final price
+    
       items: [
         {
-          name: booking.packageName || "Tour Booking",
-          sku: booking.packageId?.toString() || booking._id.toString(),
-          unitprice: amount,
+          name: "Tour Booking",
+          sku: booking._id.toString(),
+          unitprice: booking.totalPrice,
           quantity: 1,
-          linetotal: amount,
+          linetotal: booking.totalPrice,
         },
       ],
+    
       customer: {
         id: booking._id.toString(),
         firstName: booking.guestName?.split(" ")[0] || "Guest",
@@ -72,27 +72,27 @@ export const createPayment = async (req, res) => {
         email: booking.guestEmail,
         phone: booking.guestContact,
       },
+    
       billingAddress: {
         name: booking.guestName || "Customer",
         address1: "Dubai",
         city: "Dubai",
-        state: "Dubai",
-        zip: "00000",
         country: "AE",
         set: true,
       },
+    
       deliveryAddress: {
         name: booking.guestName || "Customer",
         address1: "Dubai",
         city: "Dubai",
-        state: "Dubai",
-        zip: "00000",
         country: "AE",
         set: true,
       },
+    
       returnUrl: `${process.env.FRONTEND_URL}/booking-success?bookingId=${booking._id}`,
       language: "EN",
     };
+    
 
     const response = await axios.post(process.env.PAYMENNT_API_URL, payload, {
       headers: {

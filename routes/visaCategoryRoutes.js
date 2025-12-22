@@ -6,6 +6,8 @@ import {
   deleteVisaCategory,
   updateVisaCategory,
   getVisasByCategory,
+  getVisaCategoryById,              // ⭐ NEW
+  updateVisaCategoryDescription,    // ⭐ NEW
 } from "../controllers/visaCategoryController.js";
 
 const router = express.Router();
@@ -16,19 +18,16 @@ const router = express.Router();
 -------------------------------------------
 */
 
-// ➕ Add new visa category
 router.post("/", addVisaCategory);
-
-// 📄 Get all categories
 router.get("/", getVisaCategories);
 
-// 📝 Update category (name + slug)
-router.put("/:id", updateVisaCategory);
+router.get("/:id", getVisaCategoryById);
+router.put("/:id/description", updateVisaCategoryDescription);
 
-// ❌ Delete category
+router.put("/:id", updateVisaCategory);
 router.delete("/:id", deleteVisaCategory);
 
-// 📦 Get visas inside a category by slug
 router.get("/category/:slug", getVisasByCategory);
+
 
 export default router;

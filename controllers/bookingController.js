@@ -44,6 +44,9 @@ export const createBooking = async (req, res) => {
       pickupPoint,
       dropPoint,
       specialRequest,
+      // ⭐ ADD THESE
+      couponCode,
+      couponDiscount = 0,
     } = req.body;
 
     console.log("📩 BOOKING BODY RECEIVED:", req.body);
@@ -63,6 +66,7 @@ export const createBooking = async (req, res) => {
       const childPrice = Number(item.childPrice || tour?.priceChild || 0);
       const adultCount = Number(item.adultCount || 0);
       const childCount = Number(item.childCount || 0);
+    
 
       const itemTotal = adultPrice * adultCount + childPrice * childCount;
       subtotal += itemTotal;
@@ -76,16 +80,23 @@ export const createBooking = async (req, res) => {
         childPrice,
       });
     }
-
+    const discountAmount = Number(couponDiscount || 0);
     // ⭐ ADD TRANSACTION FEE
     const transactionFee = Number((subtotal * 0.0375).toFixed(2));
-    const finalTotal = Number((subtotal + transactionFee).toFixed(2));
+
+    const finalTotal = Math.max(
+      Number((subtotal + transactionFee - discountAmount).toFixed(2)),
+      0
+    );
 
     // ⭐ PREPARE BOOKING DATA
     const bookingData = {
       items: processedItems,
       subtotal,
       transactionFee,
+      // ⭐ SAVE COUPON INFO
+      couponCode: couponCode || null,
+      couponDiscount: discountAmount,
       totalPrice: finalTotal,
       pickupPoint,
       dropPoint,
@@ -162,7 +173,15 @@ export const createBooking = async (req, res) => {
                   <hr style="margin:25px 0;border:none;border-top:1px solid #ddd;">
       
                   <p style="font-size:16px;margin-bottom:8px;">
-                    <b>Total Amount:</b> AED ${finalTotal}
+                    <b>Subtotal:</b> AED ${subtotal}<br/>
+<b>Transaction Fee:</b> AED ${transactionFee}<br/>
+${
+  discountAmount > 0
+    ? `<b>Coupon Discount:</b> − AED ${discountAmount}<br/>`
+    : ""
+}
+<b>Total Amount:</b> AED ${finalTotal}
+
                   </p>
       
                   <p style="margin-top:0;font-size:14px;color:#555;">

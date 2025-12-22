@@ -109,3 +109,42 @@ export const getVisasByCategory = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// ---------------------------------------------
+// ⭐ GET SINGLE VISA CATEGORY (for SEO / Editor)
+// ---------------------------------------------
+export const getVisaCategoryById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const category = await VisaCategory.findById(id);
+    if (!category)
+      return res.status(404).json({ message: "Visa category not found" });
+
+    res.json(category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+// ---------------------------------------------
+// ⭐ UPDATE VISA CATEGORY DESCRIPTION (CONTENT)
+// ---------------------------------------------
+export const updateVisaCategoryDescription = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description } = req.body;
+
+    const category = await VisaCategory.findById(id);
+    if (!category)
+      return res.status(404).json({ message: "Visa category not found" });
+
+    category.description = description || "";
+    await category.save();
+
+    res.json({ message: "Visa category content updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

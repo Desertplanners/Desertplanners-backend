@@ -4,11 +4,29 @@ import slugify from "slugify";
 
 const visaCategorySchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, unique: true, trim: true },
-    slug: { type: String, unique: true, lowercase: true, trim: true },
+    name: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+
+    slug: {
+      type: String,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+
+    // ⭐ NEW — WordPress-style HTML content
+    description: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
+
 
 // Auto-generate slug from name
 visaCategorySchema.pre("save", function (next) {
