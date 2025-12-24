@@ -391,19 +391,6 @@ export const updateTour = async (req, res) => {
       tour.cancellationPolicy = parseCancellationPolicy(cancellationPolicy);
     }
 
-    // ⭐ SEO UPDATE
-    await SEO.findOneAndUpdate(
-      { parentType: "tour", parentId: tour._id },
-      {
-        seoTitle: title || tour.title,
-        seoDescription: description
-          ? description.slice(0, 160)
-          : tour.description.slice(0, 160),
-        seoOgImage: tour.mainImage,
-      },
-      { upsert: true }
-    );
-
     await tour.save();
 
     console.log("✅ Tour updated successfully:", tour.title);

@@ -178,15 +178,20 @@ export const updateHolidayTour = async (req, res) => {
     await tour.save();
 
     // ⭐ UPDATE SEO ON HOLIDAY UPDATE
-    await SEO.findOneAndUpdate(
-      { parentType: "holiday", parentId: tour._id },
-      {
+    const existingSEO = await SEO.findOne({
+      parentType: "holiday",
+      parentId: tour._id.toString(),
+    });
+
+    if (!existingSEO) {
+      await SEO.create({
+        parentType: "holiday",
+        parentId: tour._id.toString(),
         seoTitle: tour.title,
         seoDescription: tour.description?.slice(0, 160),
         seoOgImage: tour.sliderImages[0] || "",
-      },
-      { upsert: true }
-    );
+      });
+    }
 
     res.json({ success: true, message: "Updated", tour });
   } catch (err) {

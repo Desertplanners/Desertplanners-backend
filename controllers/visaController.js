@@ -150,19 +150,20 @@ export const updateVisa = async (req, res) => {
 
     await visa.save();
 
-    // ⭐ SEO UPDATE
-    await SEO.findOneAndUpdate(
-      { parentType: "visa", parentId: visa._id },
-      {
-        seoTitle: title || visa.title,
-        seoDescription:
-          typeof overview === "string"
-            ? overview.slice(0, 160)
-            : (overview?.[0] || visa.overview?.[0] || "").slice(0, 160),
+    const existingSEO = await SEO.findOne({
+      parentType: "visa",
+      parentId: visa._id.toString(),
+    });
+
+    if (!existingSEO) {
+      await SEO.create({
+        parentType: "visa",
+        parentId: visa._id.toString(),
+        seoTitle: visa.title,
+        seoDescription: visa.overview?.[0]?.slice(0, 160) || "",
         seoOgImage: visa.img,
-      },
-      { new: true, upsert: true }
-    );
+      });
+    }
 
     res.json({ message: "Visa updated successfully", visa });
   } catch (err) {
