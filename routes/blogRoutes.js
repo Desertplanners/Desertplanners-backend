@@ -5,26 +5,58 @@ import {
   getBlogBySlug,
   updateBlog,
   deleteBlog,
+  getBlogsByCategory,
 } from "../controllers/blogController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
+import { blogUpload } from "../middleware/blogUpload.js";
 
 const router = express.Router();
 
-// ➕ Create Blog (LOGIN REQUIRED)
-router.post("/", protect, createBlog);
+/* ================================
+   ➕ CREATE BLOG (Admin)
+================================ */
+router.post(
+  "/",
+  protect,
+  blogUpload.fields([
+    { name: "featuredImage", maxCount: 1 },
+  ]),
+  createBlog
+);
 
-// 📄 Get all blogs
+/* ================================
+   📄 GET ALL BLOGS
+================================ */
 router.get("/", getBlogs);
 
-// 📦 Get blog by slug (frontend)
+/* ================================
+   📂 GET BLOGS BY CATEGORY (🔥 FIXED)
+   USE SLUG, NOT ID
+================================ */
+router.get("/category/:slug", getBlogsByCategory);
+
+/* ================================
+   📦 GET BLOG BY SLUG (Frontend)
+   ⚠️ ALWAYS AFTER category route
+================================ */
 router.get("/:slug", getBlogBySlug);
 
-// 📝 Update blog (LOGIN REQUIRED)
-router.put("/:id", protect, updateBlog);
+/* ================================
+   📝 UPDATE BLOG (Admin)
+================================ */
+router.put(
+  "/:id",
+  protect,
+  blogUpload.fields([
+    { name: "featuredImage", maxCount: 1 },
+  ]),
+  updateBlog
+);
 
-// ❌ Delete blog (LOGIN REQUIRED)
+/* ================================
+   ❌ DELETE BLOG (Admin)
+================================ */
 router.delete("/:id", protect, deleteBlog);
 
 export default router;
-

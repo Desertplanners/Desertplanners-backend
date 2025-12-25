@@ -17,7 +17,7 @@ const blogSchema = new mongoose.Schema(
       lowercase: true,
     },
 
-    // ✍️ HTML content from editor
+    // ✍️ HTML content
     content: {
       type: String,
       required: true,
@@ -30,7 +30,7 @@ const blogSchema = new mongoose.Schema(
       required: true,
     },
 
-    // 👤 Author (auto from logged-in user)
+    // 👤 AUTHOR DETAILS (MANUAL FROM ADMIN)
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -42,26 +42,44 @@ const blogSchema = new mongoose.Schema(
       required: true,
     },
 
-    // 🖼️ Featured Image (optional)
+    authorBio: {
+      type: String,
+      default: "",
+    },
+
+    authorImage: {
+      type: String,
+      default: "",
+    },
+
+    // 🖼️ Featured Image
     featuredImage: {
       type: String,
       default: "",
     },
 
-    // 👀 Views Counter
+    // 🎯 SELECTED TOURS (MANUAL SELECTION)
+    relatedTours: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Tour",
+      },
+    ],
+
+    // 👀 Views
     views: {
       type: Number,
       default: 0,
     },
 
-    // 🟢 Draft / Publish
+    // 🟢 Status
     status: {
       type: String,
       enum: ["draft", "published"],
       default: "published",
     },
 
-    // 🔍 SEO Fields
+    // 🔍 SEO
     seo: {
       metaTitle: String,
       metaDescription: String,
@@ -71,7 +89,7 @@ const blogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🔥 Auto-generate slug
+// 🔥 Auto Slug
 blogSchema.pre("save", function (next) {
   if (!this.slug && this.title) {
     this.slug = slugify(this.title, {
