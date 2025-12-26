@@ -66,7 +66,6 @@ export const createBooking = async (req, res) => {
       const childPrice = Number(item.childPrice || tour?.priceChild || 0);
       const adultCount = Number(item.adultCount || 0);
       const childCount = Number(item.childCount || 0);
-    
 
       const itemTotal = adultPrice * adultCount + childPrice * childCount;
       subtotal += itemTotal;
@@ -82,12 +81,14 @@ export const createBooking = async (req, res) => {
     }
     const discountAmount = Number(couponDiscount || 0);
     // ⭐ ADD TRANSACTION FEE
-    const transactionFee = Number((subtotal * 0.0375).toFixed(2));
+    // ✅ STEP 1: Discounted Subtotal
+    const discountedSubtotal = Math.max(subtotal - discountAmount, 0);
 
-    const finalTotal = Math.max(
-      Number((subtotal + transactionFee - discountAmount).toFixed(2)),
-      0
-    );
+    // ✅ STEP 2: Transaction Fee on Discounted Subtotal
+    const transactionFee = Number((discountedSubtotal * 0.0375).toFixed(2));
+
+    // ✅ STEP 3: Final Payable
+    const finalTotal = Number((discountedSubtotal + transactionFee).toFixed(2));
 
     // ⭐ PREPARE BOOKING DATA
     const bookingData = {
