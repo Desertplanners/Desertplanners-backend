@@ -15,12 +15,14 @@ const router = express.Router();
 
 /* ================================
    ➕ CREATE BLOG (Admin)
+   ➕ Featured Image + Author Image
 ================================ */
 router.post(
   "/",
   protect,
   blogUpload.fields([
     { name: "featuredImage", maxCount: 1 },
+    { name: "authorImage", maxCount: 1 }, // ✅ NEW
   ]),
   createBlog
 );
@@ -31,7 +33,7 @@ router.post(
 router.get("/", getBlogs);
 
 /* ================================
-   📂 GET BLOGS BY CATEGORY (🔥 FIXED)
+   📂 GET BLOGS BY CATEGORY
    USE SLUG, NOT ID
 ================================ */
 router.get("/category/:slug", getBlogsByCategory);
@@ -44,12 +46,14 @@ router.get("/:slug", getBlogBySlug);
 
 /* ================================
    📝 UPDATE BLOG (Admin)
+   ➕ Featured Image + Author Image
 ================================ */
 router.put(
   "/:id",
   protect,
   blogUpload.fields([
     { name: "featuredImage", maxCount: 1 },
+    { name: "authorImage", maxCount: 1 }, // ✅ NEW
   ]),
   updateBlog
 );

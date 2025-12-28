@@ -15,12 +15,14 @@ export const createBlog = async (req, res) => {
       seo,
       authorName,
       authorBio,
-      authorImage,
       relatedTours,
     } = req.body;
 
     const featuredImage =
       req.files?.featuredImage?.[0]?.path || "";
+
+    const authorImage =
+      req.files?.authorImage?.[0]?.path || "";
 
     const blog = await Blog.create({
       title,
@@ -30,14 +32,13 @@ export const createBlog = async (req, res) => {
       seo,
       authorName: authorName || req.user.name,
       authorBio,
-      authorImage,
+      authorImage, // ✅ NOW SAVED
       relatedTours: Array.isArray(relatedTours)
         ? relatedTours
         : relatedTours
         ? [relatedTours]
         : [],
       featuredImage,
-
       author: req.user._id,
     });
 
@@ -46,6 +47,7 @@ export const createBlog = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
+
 
 /* ================================
    📄 GET ALL BLOGS (Admin)
@@ -102,7 +104,6 @@ export const updateBlog = async (req, res) => {
       seo,
       authorName,
       authorBio,
-      authorImage,
       relatedTours,
     } = req.body;
 
@@ -114,7 +115,6 @@ export const updateBlog = async (req, res) => {
       seo,
       authorName,
       authorBio,
-      authorImage,
       relatedTours: Array.isArray(relatedTours)
         ? relatedTours
         : relatedTours
@@ -122,7 +122,6 @@ export const updateBlog = async (req, res) => {
         : [],
     };
 
-    // 🔥 Update slug if title changed
     if (title) {
       updateData.slug = slugify(title, {
         lower: true,
@@ -130,10 +129,16 @@ export const updateBlog = async (req, res) => {
       });
     }
 
-    // 🟡 If new image uploaded
+    // ✅ FEATURED IMAGE
     if (req.files?.featuredImage?.[0]?.path) {
       updateData.featuredImage =
         req.files.featuredImage[0].path;
+    }
+
+    // ✅ AUTHOR IMAGE (MISSING FIX)
+    if (req.files?.authorImage?.[0]?.path) {
+      updateData.authorImage =
+        req.files.authorImage[0].path;
     }
 
     const updatedBlog = await Blog.findByIdAndUpdate(
@@ -151,6 +156,7 @@ export const updateBlog = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
+
 
 /* ================================
    ❌ DELETE BLOG (Admin)
