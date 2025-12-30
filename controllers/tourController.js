@@ -85,7 +85,6 @@ export const addTour = async (req, res) => {
       !title ||
       !description ||
       priceAdult === undefined ||
-      !duration ||
       !category ||
       !startDate ||
       !endDate
@@ -310,7 +309,10 @@ export const updateTour = async (req, res) => {
       tour.pickupDropRequired = pickupDropRequired === "true";
     }
     if (description) tour.description = description;
-    if (duration) tour.duration = duration;
+    if (duration !== undefined) {
+      tour.duration = duration || "";
+    }
+    
     if (timings) tour.timings = timings;
     if (location) tour.location = location;
     if (termsAndConditions !== undefined)

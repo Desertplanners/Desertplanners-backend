@@ -18,7 +18,7 @@ const tourSchema = new mongoose.Schema(
     // ⭐ Child Discount Price
     discountPriceChild: { type: Number, default: null },
 
-    duration: { type: String, required: true },
+    duration: { type: String,  },
 
     category: {
       type: mongoose.Schema.Types.ObjectId,
