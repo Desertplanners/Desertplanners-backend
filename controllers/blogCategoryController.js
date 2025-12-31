@@ -1,6 +1,7 @@
 import BlogCategory from "../models/blogCategoryModel.js";
 import slugify from "slugify";
-import Blog from "../models/Blog.js"; // ⭐ Blog model (important)
+import Blog from "../models/Blog.js";
+import SEO from "../models/SEO.js"; // ⭐ IMPORTANT
 
 // ---------------------------------------------
 // ⭐ ADD NEW BLOG CATEGORY
@@ -41,30 +42,58 @@ export const getBlogCategories = async (req, res) => {
 };
 
 // ---------------------------------------------
-// ⭐ UPDATE BLOG CATEGORY
+// ⭐ GET SINGLE BLOG CATEGORY BY SLUG (🔥 REQUIRED FOR SEO)
+// ---------------------------------------------
+export const getBlogCategoryBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const category = await BlogCategory.findOne({ slug });
+    if (!category)
+      return res.status(404).json({ message: "Blog category not found" });
+
+    res.json(category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ---------------------------------------------
+// ⭐ UPDATE BLOG CATEGORY + SEO SYNC (🔥 IMPORTANT)
 // ---------------------------------------------
 export const updateBlogCategory = async (req, res) => {
   try {
     const { name } = req.body;
+    const { id } = req.params;
 
     if (!name)
       return res.status(400).json({ message: "Category name is required" });
 
-    const updated = await BlogCategory.findByIdAndUpdate(
-      req.params.id,
-      {
-        name,
-        slug: slugify(name, { lower: true, strict: true }),
-      },
-      { new: true }
-    );
-
-    if (!updated)
+    const category = await BlogCategory.findById(id);
+    if (!category)
       return res.status(404).json({ message: "Blog category not found" });
+
+    const oldSlug = category.slug;
+    const newSlug = slugify(name, { lower: true, strict: true });
+
+    category.name = name;
+    category.slug = newSlug;
+    await category.save();
+
+    // ⭐ SEO SYNC (slug based SEO purana ho to)
+    await SEO.findOneAndUpdate(
+      {
+        parentType: "blogCategory",
+        parentId: oldSlug,
+      },
+      {
+        parentId: category._id.toString(),
+      }
+    );
 
     res.json({
       message: "Blog category updated successfully",
-      category: updated,
+      category,
     });
   } catch (error) {
     console.error("❌ Error updating blog category:", error);
@@ -73,14 +102,23 @@ export const updateBlogCategory = async (req, res) => {
 };
 
 // ---------------------------------------------
-// ⭐ DELETE BLOG CATEGORY
+// ⭐ DELETE BLOG CATEGORY + SEO CLEANUP
 // ---------------------------------------------
 export const deleteBlogCategory = async (req, res) => {
   try {
-    const deleted = await BlogCategory.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
 
-    if (!deleted)
+    const category = await BlogCategory.findById(id);
+    if (!category)
       return res.status(404).json({ message: "Blog category not found" });
+
+    await BlogCategory.findByIdAndDelete(id);
+
+    // ⭐ DELETE RELATED SEO
+    await SEO.findOneAndDelete({
+      parentType: "blogCategory",
+      parentId: category._id.toString(),
+    });
 
     res.json({ message: "Blog category deleted successfully" });
   } catch (error) {
@@ -89,7 +127,7 @@ export const deleteBlogCategory = async (req, res) => {
 };
 
 // ---------------------------------------------
-// ⭐ GET BLOGS BY CATEGORY SLUG
+// ⭐ GET BLOGS BY CATEGORY SLUG (NO CHANGE)
 // ---------------------------------------------
 export const getBlogsByCategory = async (req, res) => {
   try {
@@ -100,7 +138,7 @@ export const getBlogsByCategory = async (req, res) => {
       return res.status(404).json({ message: "Blog category not found" });
 
     const blogs = await Blog.find({ category: category._id })
-      .select("title slug image excerpt createdAt")
+      .select("title slug featuredImage excerpt createdAt category authorName")
       .sort({ createdAt: -1 });
 
     res.json(blogs);

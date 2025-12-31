@@ -5,6 +5,7 @@ import {
   updateBlogCategory,
   deleteBlogCategory,
   getBlogsByCategory,
+  getBlogCategoryBySlug, // ⭐ NEW
 } from "../controllers/blogCategoryController.js";
 
 const router = express.Router();
@@ -20,6 +21,9 @@ router.post("/", addBlogCategory);
 
 // 📄 Get all categories
 router.get("/", getBlogCategories);
+
+// ⭐ GET SINGLE CATEGORY BY SLUG (SEO HELPER)
+router.get("/slug/:slug", getBlogCategoryBySlug);
 
 // 📝 Update category
 router.put("/:id", updateBlogCategory);
