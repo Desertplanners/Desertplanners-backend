@@ -3,6 +3,7 @@ import Tour from "../models/Tour.js";
 import Visa from "../models/Visa.js";
 import HolidayTour from "../models/HolidayTour.js";
 import Blog from "../models/Blog.js";
+import BlogCategory from "../models/blogCategoryModel.js";
 
 const router = express.Router();
 const baseUrl = "https://www.desertplanners.net";
@@ -168,6 +169,34 @@ router.get("/sitemap-main.xml", async (req, res) => {
 // ======================================================
 router.get("/sitemap-blog.xml", async (req, res) => {
   try {
+    // ===============================
+    // 1️⃣ BLOG MAIN PAGE
+    // ===============================
+    const blogMainPage = `
+      <url>
+        <loc>${baseUrl}/blog</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+      </url>
+    `;
+
+    // ===============================
+    // 2️⃣ BLOG CATEGORIES
+    // ===============================
+    const categories = await BlogCategory.find({});
+
+    const categoryUrls = categories.map(
+      (c) => `
+      <url>
+        <loc>${baseUrl}/blog/category/${c.slug}</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+      </url>`
+    );
+
+    // ===============================
+    // 3️⃣ BLOG POSTS
+    // ===============================
     const blogs = await Blog.find({});
 
     const blogUrls = blogs.map(
@@ -180,8 +209,13 @@ router.get("/sitemap-blog.xml", async (req, res) => {
       </url>`
     );
 
+    // ===============================
+    // FINAL XML
+    // ===============================
     const xml = `
     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      ${blogMainPage}
+      ${categoryUrls.join("")}
       ${blogUrls.join("")}
     </urlset>
     `;
@@ -202,33 +236,43 @@ router.get("/sitemap.html", async (req, res) => {
   try {
     const baseUrl = "https://www.desertplanners.net";
 
+    // =========================
     // STATIC PAGES
+    // =========================
     const staticPages = [
       { name: "Home", url: `${baseUrl}/` },
       { name: "About Us", url: `${baseUrl}/about-us` },
       { name: "Contact", url: `${baseUrl}/contact-us` },
       { name: "Privacy Policy", url: `${baseUrl}/privacy-policy` },
-      { name: "Terms & Conditions", url: `${baseUrl}/terms-and-conditions` },
+      { name: "Terms & Conditions", url: `${baseUrl}/terms-conditions` },
       { name: "Tours", url: `${baseUrl}/tours` },
       { name: "Visa", url: `${baseUrl}/visa` },
       { name: "Holidays", url: `${baseUrl}/holidays` },
+      { name: "Blog", url: `${baseUrl}/blog` }
     ];
 
+    // =========================
     // TOURS
+    // =========================
     const tours = await Tour.find({}).populate("category", "slug name").lean();
+
     const tourList = tours.map((t) => ({
       name: t.title,
       url: `${baseUrl}/tours/${t.category?.slug}/${t.slug}`,
     }));
 
-    const tourCategoryList = [...new Set(tours.map((t) => t.category?.slug))]
+    const tourCategoryList = [
+      ...new Set(tours.map((t) => t.category?.slug)),
+    ]
       .filter(Boolean)
       .map((c) => ({
         name: c,
-        url: `${baseUrl}/tours/${c}`,
+        url: `${baseUrl}/tours/category/${c}`,
       }));
 
+    // =========================
     // VISAS
+    // =========================
     const visas = await Visa.find({}).populate("visaCategory", "slug");
 
     const visaList = visas.map((v) => ({
@@ -245,7 +289,9 @@ router.get("/sitemap.html", async (req, res) => {
         url: `${baseUrl}/visa/${c}`,
       }));
 
+    // =========================
     // HOLIDAYS
+    // =========================
     const holidays = await HolidayTour.find({}).populate("category", "slug");
 
     const holidayList = holidays.map((h) => ({
@@ -262,76 +308,74 @@ router.get("/sitemap.html", async (req, res) => {
         url: `${baseUrl}/holidays/${c}`,
       }));
 
+    // =========================
+    // BLOGS
+    // =========================
+    const blogs = await Blog.find({});
+    const blogList = blogs.map((b) => ({
+      name: b.title,
+      url: `${baseUrl}/blog/${b.slug}`,
+    }));
+
+    const blogCategories = await BlogCategory.find({});
+    const blogCategoryList = blogCategories.map((c) => ({
+      name: c.name,
+      url: `${baseUrl}/blog/category/${c.slug}`,
+    }));
+
+    // =========================
     // HTML TEMPLATE
-    let html = `
+    // =========================
+    const html = `
+<!DOCTYPE html>
 <html>
 <head>
   <title>HTML Sitemap - Desert Planners</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
       background: #f7f7f7;
+      padding: 40px;
       color: #333;
     }
-
     .container {
       max-width: 900px;
-      margin: 40px auto;
-      background: #ffffff;
+      margin: auto;
+      background: #fff;
       padding: 40px;
       border-radius: 12px;
       box-shadow: 0 5px 20px rgba(0,0,0,0.08);
     }
-
     h1 {
       text-align: center;
-      font-size: 32px;
       color: #b40303;
-      margin-bottom: 20px;
-      border-bottom: 3px solid #b40303;
-      padding-bottom: 10px;
+      margin-bottom: 30px;
     }
-
     .section {
       margin-top: 40px;
-      padding-left: 10px;
       border-left: 5px solid #b40303;
+      padding-left: 15px;
     }
-
     .section h2 {
-      font-size: 26px;
       color: #b40303;
       margin-bottom: 15px;
     }
-
     ul {
       list-style: none;
-      padding-left: 10px;
+      padding-left: 0;
     }
-
-    ul li {
+    li {
       padding: 6px 0;
-      font-size: 16px;
       border-bottom: 1px solid #eee;
     }
-
-    ul li:last-child {
-      border-bottom: none;
-    }
-
     a {
       color: #0066cc;
       text-decoration: none;
-      transition: 0.2s ease-in-out;
     }
-
     a:hover {
       color: #b40303;
       text-decoration: underline;
     }
-
     .footer-note {
       text-align: center;
       margin-top: 40px;
@@ -343,88 +387,56 @@ router.get("/sitemap.html", async (req, res) => {
 
 <body>
   <div class="container">
-
     <h1>HTML Sitemap</h1>
 
     <div class="section">
       <h2>Pages</h2>
-      <ul>
-        ${staticPages
-          .map(
-            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
-          )
-          .join("")}
-      </ul>
+      <ul>${staticPages.map(p => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`).join("")}</ul>
     </div>
 
     <div class="section">
       <h2>Tours</h2>
-      <ul>
-        ${tourList
-          .map(
-            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
-          )
-          .join("")}
-      </ul>
+      <ul>${tourList.map(p => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`).join("")}</ul>
     </div>
 
     <div class="section">
       <h2>Tour Categories</h2>
-      <ul>
-        ${tourCategoryList
-          .map(
-            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
-          )
-          .join("")}
-      </ul>
+      <ul>${tourCategoryList.map(p => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`).join("")}</ul>
     </div>
 
     <div class="section">
       <h2>Visas</h2>
-      <ul>
-        ${visaList
-          .map(
-            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
-          )
-          .join("")}
-      </ul>
+      <ul>${visaList.map(p => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`).join("")}</ul>
     </div>
 
     <div class="section">
       <h2>Visa Categories</h2>
-      <ul>
-        ${visaCategoryList
-          .map(
-            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
-          )
-          .join("")}
-      </ul>
+      <ul>${visaCategoryList.map(p => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`).join("")}</ul>
     </div>
 
     <div class="section">
       <h2>Holiday Packages</h2>
-      <ul>
-        ${holidayList
-          .map(
-            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
-          )
-          .join("")}
-      </ul>
+      <ul>${holidayList.map(p => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`).join("")}</ul>
     </div>
 
     <div class="section">
       <h2>Holiday Categories</h2>
-      <ul>
-        ${holidayCategoryList
-          .map(
-            (p) => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`
-          )
-          .join("")}
-      </ul>
+      <ul>${holidayCategoryList.map(p => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`).join("")}</ul>
     </div>
 
-    <p class="footer-note">Desert Planners Tourism LLC – Sitemap Generated Automatically</p>
+    <div class="section">
+      <h2>Blog Categories</h2>
+      <ul>${blogCategoryList.map(p => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`).join("")}</ul>
+    </div>
 
+    <div class="section">
+      <h2>Blogs</h2>
+      <ul>${blogList.map(p => `<li><a href="${p.url}" target="_blank">${p.name}</a></li>`).join("")}</ul>
+    </div>
+
+    <p class="footer-note">
+      Desert Planners Tourism LLC – Sitemap Generated Automatically
+    </p>
   </div>
 </body>
 </html>
@@ -432,8 +444,8 @@ router.get("/sitemap.html", async (req, res) => {
 
     res.header("Content-Type", "text/html");
     res.send(html);
-  } catch (err) {
-    console.log("HTML sitemap error:", err);
+  } catch (error) {
+    console.log("❌ HTML sitemap error:", error);
     res.status(500).send("Error generating HTML sitemap");
   }
 });
