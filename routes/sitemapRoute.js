@@ -2,19 +2,46 @@ import express from "express";
 import Tour from "../models/Tour.js";
 import Visa from "../models/Visa.js";
 import HolidayTour from "../models/HolidayTour.js";
+import Blog from "../models/Blog.js";
 
 const router = express.Router();
+const baseUrl = "https://www.desertplanners.net";
 
-router.get("/sitemap.xml", async (req, res) => {
+// ===============================
+// COMMON DATE FORMATTER
+// ===============================
+const formatDate = (date) => {
+  if (!date) return "";
+  return new Date(date).toISOString();
+};
+
+// ======================================================
+// 1️⃣ SITEMAP INDEX (MAIN ENTRY POINT)
+// URL: /sitemap.xml
+// ======================================================
+router.get("/sitemap.xml", (req, res) => {
+  const xml = `
+  <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <sitemap>
+      <loc>${baseUrl}/sitemap-main.xml</loc>
+    </sitemap>
+    <sitemap>
+      <loc>${baseUrl}/sitemap-blog.xml</loc>
+    </sitemap>
+  </sitemapindex>
+  `;
+
+  res.header("Content-Type", "application/xml");
+  res.send(xml.trim());
+});
+
+// ======================================================
+// 2️⃣ MAIN SITEMAP (PAGES + TOURS + VISA + HOLIDAYS)
+// URL: /sitemap-main.xml
+// ======================================================
+router.get("/sitemap-main.xml", async (req, res) => {
   try {
-    const baseUrl = "https://www.desertplanners.net";
-
-    const formatDate = (date) => {
-      if (!date) return "";
-      return new Date(date).toISOString();
-    };
-
-    // ===== STATIC PAGES =====
+    // ---------- STATIC PAGES ----------
     const staticPages = [
       "",
       "about-us",
@@ -36,34 +63,33 @@ router.get("/sitemap.xml", async (req, res) => {
       </url>`
     );
 
-    // ===== TOURS =====
+    // ---------- TOURS ----------
     const tours = await Tour.find({}).populate("category", "slug");
-
     const tourUrls = tours.map(
       (t) => `
-  <url>
-    <loc>${baseUrl}/tours/${t.category?.slug}/${t.slug}</loc>
-    <lastmod>${formatDate(t.updatedAt)}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>`
+      <url>
+        <loc>${baseUrl}/tours/${t.category?.slug}/${t.slug}</loc>
+        <lastmod>${formatDate(t.updatedAt)}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+      </url>`
     );
 
-    // TOUR CATEGORY URLs
+    // TOUR CATEGORIES
     const tourCategories = [
       ...new Set(tours.map((t) => t.category?.slug)),
     ].filter(Boolean);
 
     const tourCategoryUrls = tourCategories.map(
       (cat) => `
-  <url>
-    <loc>${baseUrl}/tours/category/${cat}</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>`
+      <url>
+        <loc>${baseUrl}/tours/category/${cat}</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.7</priority>
+      </url>`
     );
 
-    // ===== VISAS =====
+    // ---------- VISAS ----------
     const visas = await Visa.find({}).populate("visaCategory", "slug");
     const visaUrls = visas.map(
       (v) => `
@@ -79,6 +105,7 @@ router.get("/sitemap.xml", async (req, res) => {
     const visaCategories = [
       ...new Set(visas.map((v) => v.visaCategory?.slug)),
     ].filter(Boolean);
+
     const visaCategoryUrls = visaCategories.map(
       (cat) => `
       <url>
@@ -88,7 +115,7 @@ router.get("/sitemap.xml", async (req, res) => {
       </url>`
     );
 
-    // ===== HOLIDAY PACKAGES =====
+    // ---------- HOLIDAYS ----------
     const holidays = await HolidayTour.find({}).populate("category", "slug");
     const holidayUrls = holidays.map(
       (h) => `
@@ -104,6 +131,7 @@ router.get("/sitemap.xml", async (req, res) => {
     const holidayCategories = [
       ...new Set(holidays.map((h) => h.category?.slug)),
     ].filter(Boolean);
+
     const holidayCategoryUrls = holidayCategories.map(
       (cat) => `
       <url>
@@ -113,30 +141,63 @@ router.get("/sitemap.xml", async (req, res) => {
       </url>`
     );
 
-    // === FINAL XML ===
+    // ---------- FINAL XML ----------
     const xml = `
-      <urlset 
-        xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
-      >
-        ${staticUrls.join("")}
-        ${tourUrls.join("")}
-        ${tourCategoryUrls.join("")}
-        ${visaUrls.join("")}
-        ${visaCategoryUrls.join("")}
-        ${holidayUrls.join("")}
-        ${holidayCategoryUrls.join("")}
-      </urlset>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      ${staticUrls.join("")}
+      ${tourUrls.join("")}
+      ${tourCategoryUrls.join("")}
+      ${visaUrls.join("")}
+      ${visaCategoryUrls.join("")}
+      ${holidayUrls.join("")}
+      ${holidayCategoryUrls.join("")}
+    </urlset>
     `;
 
     res.header("Content-Type", "application/xml");
     res.send(xml.trim());
   } catch (error) {
-    console.log("❌ Sitemap Error:", error);
-    res.status(500).send("Error generating sitemap");
+    console.log("❌ Main Sitemap Error:", error);
+    res.status(500).send("Error generating main sitemap");
   }
 });
 
+// ======================================================
+// 3️⃣ BLOG SITEMAP (ONLY BLOGS)
+// URL: /sitemap-blog.xml
+// ======================================================
+router.get("/sitemap-blog.xml", async (req, res) => {
+  try {
+    const blogs = await Blog.find({});
+
+    const blogUrls = blogs.map(
+      (b) => `
+      <url>
+        <loc>${baseUrl}/blog/${b.slug}</loc>
+        <lastmod>${formatDate(b.updatedAt)}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.7</priority>
+      </url>`
+    );
+
+    const xml = `
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      ${blogUrls.join("")}
+    </urlset>
+    `;
+
+    res.header("Content-Type", "application/xml");
+    res.send(xml.trim());
+  } catch (error) {
+    console.log("❌ Blog Sitemap Error:", error);
+    res.status(500).send("Error generating blog sitemap");
+  }
+});
+
+// ======================================================
+// 4️⃣ HTML SITEMAP (USER FRIENDLY)
+// URL: /sitemap.html
+// ======================================================
 router.get("/sitemap.html", async (req, res) => {
   try {
     const baseUrl = "https://www.desertplanners.net";
