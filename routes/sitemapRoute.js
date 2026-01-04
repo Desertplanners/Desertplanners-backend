@@ -27,7 +27,7 @@ router.get("/sitemap.xml", (req, res) => {
       <loc>${baseUrl}/sitemap-main.xml</loc>
     </sitemap>
     <sitemap>
-      <loc>${baseUrl}/sitemap-blog.xml</loc>
+      <loc>${baseUrl}/blog/sitemap-blog.xml</loc>
     </sitemap>
   </sitemapindex>
   `;
@@ -167,7 +167,7 @@ router.get("/sitemap-main.xml", async (req, res) => {
 // 3️⃣ BLOG SITEMAP (ONLY BLOGS)
 // URL: /sitemap-blog.xml
 // ======================================================
-router.get("/sitemap-blog.xml", async (req, res) => {
+router.get("/blog/sitemap-blog.xml", async (req, res) => {
   try {
     // ===============================
     // 1️⃣ BLOG MAIN PAGE
