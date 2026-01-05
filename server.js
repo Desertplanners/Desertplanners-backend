@@ -45,6 +45,7 @@ import robotsRoute from "./routes/robotsRoute.js";
 import blogCategoryRoutes from "./routes/blogCategoryRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
+import ogRoutes from "./routes/ogRoutes.js"; // ⭐ UNIVERSAL OG ROUTE
 
 
 // Cloudinary
@@ -100,7 +101,15 @@ app.use(
 // ==========================
 // 🧭 Routes
 // ==========================
+
+// 🤖 1️⃣ OG / SOCIAL PREVIEW ROUTES (MUST BE FIRST)
+app.use("/", ogRoutes);
+
+// 🤖 2️⃣ Robots & Sitemap
 app.use("/", robotsRoute);
+app.use("/", sitemapRoute);
+
+// 🔐 3️⃣ API ROUTES
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
@@ -117,17 +126,16 @@ app.use("/api/banner", bannerRoutes);
 app.use("/api/visa-bookings", visaBookingRoutes);
 app.use("/api/visa-payment", visaPaymentRoutes);
 app.use("/api/holiday-categories", holidayCategoryRoutes);
-app.use("/api/blog-categories", blogCategoryRoutes);
 app.use("/api/holiday-tour", holidayTourRoutes);
+app.use("/api/blog-categories", blogCategoryRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api/coupons", couponRoutes);
-app.use("/", sitemapRoute);
-// ⭐ ADD THIS LINE → SEO API
 app.use("/api/seo", seoRoutes);
+
+// 🔍 Health check
 app.get("/", (req, res) => {
   res.send("✅ Desert Planners API is running...");
 });
-
 // ==========================
 // 📁 Serve Uploaded Files
 // ==========================
