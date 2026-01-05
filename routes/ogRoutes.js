@@ -9,7 +9,7 @@ const router = express.Router();
  * ✅ tours, blogs, home, pages sab handle karega
  */
 router.get(
-  /^\/(?!api|uploads|socket\.io|favicon\.ico).*/,
+  /^\/(?!api|uploads|socket\.io|favicon\.ico|robots\.txt|sitemap.*\.xml|sitemap\.html|blog\/sitemap-blog\.xml).*/,
   renderOG
 );
 
