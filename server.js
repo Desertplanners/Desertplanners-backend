@@ -107,7 +107,7 @@ app.use(
 
 // 🤖 2️⃣ Robots & Sitemap
 app.use("/", robotsRoute);
-app.use("/", sitemapRoute);
+app.use("/", sitemapRoute); 
 
 // 🔐 3️⃣ API ROUTES
 app.use("/api/auth", authRoutes);
