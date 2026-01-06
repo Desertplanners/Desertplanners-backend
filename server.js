@@ -18,10 +18,20 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { fileURLToPath } from "url";
 
+// ==========================
+// 📁 __dirname FIX (VERY IMPORTANT)
+// ==========================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ==========================
 // ✅ Database Connection
+// ==========================
 import connectDB from "./config/db.js";
 
+// ==========================
 // ✅ Routes Imports
+// ==========================
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import tourRoutes from "./routes/tourRoutes.js";
@@ -39,16 +49,17 @@ import visaBookingRoutes from "./routes/visaBookingRoutes.js";
 import visaPaymentRoutes from "./routes/visaPaymentRoutes.js";
 import holidayCategoryRoutes from "./routes/holidayCategoryRoutes.js";
 import holidayTourRoutes from "./routes/holidayTourRoutes.js";
-import seoRoutes from "./routes/seoRoutes.js"
+import seoRoutes from "./routes/seoRoutes.js";
 import sitemapRoute from "./routes/sitemapRoute.js";
 import robotsRoute from "./routes/robotsRoute.js";
 import blogCategoryRoutes from "./routes/blogCategoryRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
-import ogRoutes from "./routes/ogRoutes.js"; // ⭐ UNIVERSAL OG ROUTE
+import ogRoutes from "./routes/ogRoutes.js"; // ⭐ OG ROUTE (CRITICAL)
 
-
-// Cloudinary
+// ==========================
+// ☁️ Cloudinary
+// ==========================
 import "./config/cloudinary.js";
 
 // ==========================
@@ -66,31 +77,22 @@ app.use(cookieParser());
 app.use(morgan("dev"));
 
 // ==========================
-// 🌍 FIXED CORS (LOCAL + VERCEL + DOMAIN)
+// 🌍 CORS CONFIG
 // ==========================
-
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-
-  // OLD Vercel frontend preview
   "https://desertplanners-five.vercel.app",
-
-  // PRODUCTION domain (NEW)
   "https://desertplanners.net",
   "https://www.desertplanners.net",
-
-  // Render backend (just in case of internal calls)
   "https://desertplanners-backend.onrender.com",
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // Allow Postman & mobile
+      if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
-
-      console.warn("❌ Blocked by CORS:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
@@ -99,15 +101,15 @@ app.use(
 );
 
 // ==========================
-// 🧭 Routes
+// 🧭 ROUTES ORDER (VERY IMPORTANT)
 // ==========================
 
-// 🤖 1️⃣ OG / SOCIAL PREVIEW ROUTES (MUST BE FIRST)
+// 🤖 1️⃣ OG ROUTES (SABSE UPAR)
 app.use("/", ogRoutes);
 
 // 🤖 2️⃣ Robots & Sitemap
 app.use("/", robotsRoute);
-app.use("/", sitemapRoute); 
+app.use("/", sitemapRoute);
 
 // 🔐 3️⃣ API ROUTES
 app.use("/api/auth", authRoutes);
@@ -132,19 +134,30 @@ app.use("/api/blogs", blogRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/seo", seoRoutes);
 
-// 🔍 Health check
-app.get("/", (req, res) => {
-  res.send("✅ Desert Planners API is running...");
-});
 // ==========================
 // 📁 Serve Uploaded Files
 // ==========================
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ==========================
-// 🚀 HTTP + Socket.io setup
+// 🌐 SERVE FRONTEND (VITE BUILD)
+// ==========================
+
+const FRONTEND_DIST = path.join(
+  __dirname,
+  "../DesertPlanners_Frontend/dist"
+);
+
+// Serve static assets
+app.use(express.static(FRONTEND_DIST));
+
+// SPA fallback (Node 24 SAFE)
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(FRONTEND_DIST, "index.html"));
+});
+
+// ==========================
+// 🚀 HTTP + Socket.io Setup
 // ==========================
 const server = createServer(app);
 
@@ -166,10 +179,8 @@ io.on("connection", (socket) => {
 app.set("io", io);
 
 // ==========================
-// 🟢 Start server
+// 🟢 Start Server
 // ==========================
-console.log("RESEND KEY:", process.env.RESEND_API_KEY);
-
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
