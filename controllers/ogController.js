@@ -6,51 +6,55 @@ const SITE_URL = "https://www.desertplanners.net";
 
 export const renderOG = async (req, res) => {
   try {
-    const url = req.originalUrl;
+    const url = req.originalUrl.split("?")[0]; // remove query params
+    const pageUrl = `${SITE_URL}${url}`;
 
     let title = "Desert Planners | Dubai Tours & Experiences";
     let description =
       "Book Dubai tours, attractions, Burj Khalifa tickets & luxury experiences with Desert Planners.";
-    let image = null; // 🔴 NO DEFAULT IMAGE
-    let pageUrl = `${SITE_URL}${url}`;
+    let image = null; // ✅ NO DEFAULT IMAGE
 
-    /* ================= TOUR ================= */
+    /* =====================================================
+       🟢 TOUR PAGES  → /tours/:categorySlug/:tourSlug
+    ===================================================== */
     if (url.startsWith("/tours/")) {
-      const slug = url.split("/").pop();
+      const parts = url.split("/").filter(Boolean);
+      const tourSlug = parts[parts.length - 1]; // ✅ SAFE SLUG
 
-      const tour = await Tour.findOne({ slug });
+      const tour = await Tour.findOne({ slug: tourSlug }).lean();
       if (tour) {
         const seo = await SEO.findOne({
           parentType: "tour",
           parentId: String(tour._id),
-        });
+        }).lean();
 
         title = seo?.seoTitle || tour.title;
         description =
-          seo?.seoDescription || tour.shortDescription || description;
+          seo?.seoDescription ||
+          tour.shortDescription ||
+          description;
 
         if (seo?.seoOgImage) {
-          image = seo.seoOgImage.startsWith("http")
-            ? seo.seoOgImage
-            : `${SITE_URL}/${seo.seoOgImage}`;
+          image = seo.seoOgImage; // ✅ Cloudinary full URL
         } else if (tour.mainImage) {
-          image = tour.mainImage.startsWith("http")
-            ? tour.mainImage
-            : `${SITE_URL}/${tour.mainImage}`;
+          image = tour.mainImage;
         }
       }
     }
 
-    /* ================= BLOG ================= */
+    /* =====================================================
+       🟢 BLOG PAGES → /blog/:slug
+    ===================================================== */
     else if (url.startsWith("/blog/")) {
-      const slug = url.split("/").pop();
+      const parts = url.split("/").filter(Boolean);
+      const blogSlug = parts[parts.length - 1];
 
-      const blog = await Blog.findOne({ slug });
+      const blog = await Blog.findOne({ slug: blogSlug }).lean();
       if (blog) {
         const seo = await SEO.findOne({
           parentType: "blog",
           parentId: String(blog._id),
-        });
+        }).lean();
 
         title = seo?.seoTitle || blog.title;
         description =
@@ -60,48 +64,69 @@ export const renderOG = async (req, res) => {
           description;
 
         if (seo?.seoOgImage) {
-          image = `${SITE_URL}/${seo.seoOgImage}`;
+          image = seo.seoOgImage;
         } else if (blog.coverImage) {
-          image = `${SITE_URL}/${blog.coverImage}`;
+          image = blog.coverImage;
         }
       }
     }
 
-    /* ================= HOME ================= */
+    /* =====================================================
+       🟢 HOME PAGE → /
+    ===================================================== */
     else if (url === "/" || url === "") {
-      const seo = await SEO.findOne({ parentType: "home" });
+      const seo = await SEO.findOne({ parentType: "home" }).lean();
       if (seo) {
         title = seo.seoTitle || title;
         description = seo.seoDescription || description;
-
         if (seo.seoOgImage) {
-          image = `${SITE_URL}/${seo.seoOgImage}`;
+          image = seo.seoOgImage;
         }
       }
     }
 
-    /* ================= OTHER PAGES ================= */
+    /* =====================================================
+       🟢 OTHER STATIC / CMS PAGES
+    ===================================================== */
     else {
-      const seo = await SEO.findOne({ pageUrl: url });
+      const seo = await SEO.findOne({ pageUrl: url }).lean();
       if (seo) {
         title = seo.seoTitle || title;
         description = seo.seoDescription || description;
-
         if (seo.seoOgImage) {
-          image = `${SITE_URL}/${seo.seoOgImage}`;
+          image = seo.seoOgImage;
         }
       }
     }
 
-    /* ================= BUILD META TAGS ================= */
-    const ogImageTag = image
-      ? `<meta property="og:image" content="${image}" />
-         <meta name="twitter:image" content="${image}" />`
+    /* =====================================================
+       🖼 OPTIONAL: Force OG Image size (FB / WhatsApp best)
+       1200 x 630
+    ===================================================== */
+    if (image && image.includes("/upload/")) {
+      image = image.replace(
+        "/upload/",
+        "/upload/w_1200,h_630,c_fill/"
+      );
+    }
+
+    /* =====================================================
+       🧩 BUILD OG IMAGE TAGS ONLY IF IMAGE EXISTS
+    ===================================================== */
+    const ogImageTags = image
+      ? `
+<meta property="og:image" content="${image}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:image" content="${image}" />
+`
       : "";
 
+    /* =====================================================
+       🚀 SEND HTML (SERVER-SIDE OG)
+    ===================================================== */
     res.set("Content-Type", "text/html");
-    res.send(`
-<!DOCTYPE html>
+    res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -116,15 +141,14 @@ export const renderOG = async (req, res) => {
 <meta name="twitter:title" content="${title}" />
 <meta name="twitter:description" content="${description}" />
 
-${ogImageTag}
+${ogImageTags}
 </head>
 <body>
 <div id="root"></div>
 </body>
-</html>
-    `);
+</html>`);
   } catch (err) {
-    console.error("OG ERROR:", err);
+    console.error("❌ OG ERROR:", err);
     res.status(500).send("Server Error");
   }
 };
