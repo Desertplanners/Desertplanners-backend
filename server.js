@@ -55,7 +55,7 @@ import robotsRoute from "./routes/robotsRoute.js";
 import blogCategoryRoutes from "./routes/blogCategoryRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
-import ogRoutes from "./routes/ogRoutes.js"; // ⭐ OG ROUTE (CRITICAL)
+// import ogRoutes from "./routes/ogRoutes.js"; // ⭐ OG ROUTE (CRITICAL)
 
 // ==========================
 // ☁️ Cloudinary
@@ -105,7 +105,7 @@ app.use(
 // ==========================
 
 // 🤖 1️⃣ OG ROUTES (SABSE UPAR)
-app.use("/", ogRoutes);
+// app.use("/", ogRoutes);
 
 // 🤖 2️⃣ Robots & Sitemap
 app.use("/", robotsRoute);
