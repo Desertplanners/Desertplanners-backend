@@ -79,6 +79,12 @@ const blogSchema = new mongoose.Schema(
       default: "published",
     },
 
+    // 📅 Publish Date
+    publishedAt: {
+      type: Date,
+      default: null,
+    },
+
     // 🔍 SEO
     seo: {
       metaTitle: String,

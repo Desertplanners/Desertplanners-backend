@@ -24,23 +24,31 @@ export const createBlog = async (req, res) => {
     const authorImage =
       req.files?.authorImage?.[0]?.path || "";
 
-    const blog = await Blog.create({
-      title,
-      content,
-      category,
-      status: status || "draft",
-      seo,
-      authorName: authorName || req.user.name,
-      authorBio,
-      authorImage, // ✅ NOW SAVED
-      relatedTours: Array.isArray(relatedTours)
-        ? relatedTours
-        : relatedTours
-        ? [relatedTours]
-        : [],
-      featuredImage,
-      author: req.user._id,
-    });
+      const blogData = {
+        title,
+        content,
+        category,
+        status: status || "draft",
+        seo,
+        authorName: authorName || req.user.name,
+        authorBio,
+        authorImage,
+        relatedTours: Array.isArray(relatedTours)
+          ? relatedTours
+          : relatedTours
+          ? [relatedTours]
+          : [],
+        featuredImage,
+        author: req.user._id,
+      };
+      
+      // ✅ ONLY when published
+      if (blogData.status === "published") {
+        blogData.publishedAt = new Date();
+      }
+      
+      const blog = await Blog.create(blogData);
+      
 
     res.status(201).json(blog);
   } catch (error) {
@@ -56,7 +64,8 @@ export const getBlogs = async (req, res) => {
   try {
     const blogs = await Blog.find()
       .populate("category", "name slug")
-      .sort({ createdAt: -1 });
+      .sort({ publishedAt: -1, createdAt: -1 });
+
 
     res.json(blogs);
   } catch (error) {
@@ -107,6 +116,14 @@ export const updateBlog = async (req, res) => {
       relatedTours,
     } = req.body;
 
+    // 🔹 STEP 1: Get existing blog
+    const existingBlog = await Blog.findById(req.params.id);
+
+    if (!existingBlog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+
+    // 🔹 STEP 2: Prepare update data
     const updateData = {
       title,
       content,
@@ -122,34 +139,40 @@ export const updateBlog = async (req, res) => {
         : [],
     };
 
-    if (title) {
+    // 🔹 STEP 3: Update slug if title changed
+    if (title && title !== existingBlog.title) {
       updateData.slug = slugify(title, {
         lower: true,
         strict: true,
       });
     }
 
-    // ✅ FEATURED IMAGE
+    // 🔹 STEP 4: Draft → Published (FIRST TIME ONLY)
+    if (
+      status === "published" &&
+      !existingBlog.publishedAt
+    ) {
+      updateData.publishedAt = new Date();
+    }
+
+    // 🔹 STEP 5: Featured Image update
     if (req.files?.featuredImage?.[0]?.path) {
       updateData.featuredImage =
         req.files.featuredImage[0].path;
     }
 
-    // ✅ AUTHOR IMAGE (MISSING FIX)
+    // 🔹 STEP 6: Author Image update
     if (req.files?.authorImage?.[0]?.path) {
       updateData.authorImage =
         req.files.authorImage[0].path;
     }
 
+    // 🔹 STEP 7: Update blog
     const updatedBlog = await Blog.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true, runValidators: true }
     );
-
-    if (!updatedBlog) {
-      return res.status(404).json({ message: "Blog not found" });
-    }
 
     res.json(updatedBlog);
   } catch (error) {
@@ -198,7 +221,8 @@ export const getBlogsByCategory = async (req, res) => {
       category: category._id,
     })
       .populate("category", "name slug")
-      .sort({ createdAt: -1 });
+      .sort({ publishedAt: -1, createdAt: -1 });
+
 
     res.json(blogs);
   } catch (error) {
