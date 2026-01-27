@@ -38,9 +38,11 @@ export const adminLogin = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
-      isAdmin: true,
+      isAdmin: user.isAdmin,
+      isSuperAdmin: user.isSuperAdmin, // 🔥 ADD THIS
       token: generateToken(user._id),
     });
+    
   } catch (error) {
     console.error("Admin Login Error:", error);
     res.status(500).json({ message: "Error logging in admin" });
@@ -95,21 +97,24 @@ export const getAdminOverview = async (req, res) => {
 
 export const removeAdminAccess = async (req, res) => {
   try {
-    const currentUser = await User.findById(req.user.id);
-
-    // ❌ Only Super Admin can remove admin access
-    if (!currentUser.isSuperAdmin) {
-      return res.status(403).json({ message: "Only Super Admin can remove admin access" });
+    // ✅ req.user already verified admin
+    if (!req.user.isSuperAdmin) {
+      return res.status(403).json({
+        message: "Only Super Admin can remove admin access",
+      });
     }
 
     const { userId } = req.body;
     const user = await User.findById(userId);
 
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    // ❌ A super admin cannot be removed
     if (user.isSuperAdmin) {
-      return res.status(403).json({ message: "Super Admin cannot be demoted" });
+      return res
+        .status(403)
+        .json({ message: "Super Admin cannot be demoted" });
     }
 
     user.isAdmin = false;
@@ -117,9 +122,11 @@ export const removeAdminAccess = async (req, res) => {
 
     res.json({ message: "Admin access removed successfully" });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Error removing admin access" });
   }
 };
+
 
 
 export const forgotPassword = async (req, res) => {
