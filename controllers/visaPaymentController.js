@@ -1,3 +1,4 @@
+import axios from "axios";
 import Payment from "../models/Payment.js";
 import VisaBooking from "../models/VisaBooking.js";
 import { Resend } from "resend";
@@ -111,7 +112,7 @@ export const createVisaPayment = async (req, res) => {
       transactionId: gatewayData?.result?.id || gatewayData?.id || null,
       amount: finalAmount, // ⭐ FINAL AMOUNT
       currency: "AED",
-      status: "pending",
+      status: "Pending",
       paymentInfo: gatewayData,
       method: "checkout",
       gateway: "Paymennt",
@@ -175,7 +176,7 @@ export const visaPaymentWebhook = async (req, res) => {
           transactionId: gatewayTxnId,
           amount: paidAmount,
           currency: data.currency || "AED",
-          status: "paid",
+          status: "Paid",
           paymentInfo: data,
           method: "checkout",
           gateway: "Paymennt",
@@ -331,7 +332,7 @@ export const visaPaymentWebhook = async (req, res) => {
         {
           bookingId,
           amount: paidAmount,
-          status: "failed",
+          status: "Failed",
           paymentInfo: data,
         },
         { upsert: true }
@@ -373,7 +374,7 @@ export const manualConfirmVisaPayment = async (req, res) => {
       transactionId: `MANUAL-VISA-${Date.now()}`,
       amount: booking.totalPrice || 0,
       currency: "AED",
-      status: "paid",
+      status: "Paid",
       paymentInfo: { manual: true },
       method: "manual",
       gateway: "internal",
