@@ -14,13 +14,13 @@ import { visaUpload } from "../middleware/visaUpload.js";
 const router = express.Router();
 
 const uploadFields = visaUpload.fields([
-  { name: "passportFront", maxCount: 1 },
-  { name: "passportBack", maxCount: 1 },
-  { name: "passportCover", maxCount: 1 },
+  { name: "passportFront", maxCount: 5 },
+  { name: "passportBack", maxCount: 5 },
+  { name: "passportCover", maxCount: 5 },
   { name: "photo", maxCount: 1 },
   { name: "accommodation", maxCount: 1 },
-  { name: "emiratesId", maxCount: 1 },
-  { name: "extraId", maxCount: 1 },
+  { name: "emiratesId", maxCount: 5 },
+  { name: "extraId", maxCount: 10 },
   { name: "oldVisa", maxCount: 1 },
   { name: "flightTicket", maxCount: 1 },
 ]);
