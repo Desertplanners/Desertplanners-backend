@@ -26,6 +26,18 @@ const holidayTourSchema = new mongoose.Schema(
       },
     ],
 
+    // 🟢 Status (Draft / Published)
+    status: {
+      type: String,
+      enum: ["draft", "published"],
+      default: "draft",
+    },
+
+    // 📅 Publish Date
+    publishedAt: {
+      type: Date,
+      default: null,
+    },
     highlights: {
       nights: { type: String },
       persons: { type: String },

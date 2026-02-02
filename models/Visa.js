@@ -53,6 +53,16 @@ const visaSchema = new mongoose.Schema(
       ref: "VisaCategory",
       required: true,
     },
+    // ⭐ DRAFT / PUBLISH SYSTEM
+    status: {
+      type: String,
+      enum: ["draft", "published"],
+      default: "draft",
+    },
+    publishedAt: {
+      type: Date,
+      default: null,
+    },
 
     // Reviews
     reviews: [

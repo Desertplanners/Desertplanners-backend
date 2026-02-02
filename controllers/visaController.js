@@ -1,293 +1,302 @@
-import Visa from "../models/Visa.js";
-import VisaCategory from "../models/visaCategoryModel.js";
-import slugify from "slugify";
-import { visaUpload } from "../middleware/visaUpload.js";
-import SEO from "../models/SEO.js"; // ✅ SEO MODEL IMPORTED
+  import Visa from "../models/Visa.js";
+  import VisaCategory from "../models/visaCategoryModel.js";
+  import slugify from "slugify";
+  import { visaUpload } from "../middleware/visaUpload.js";
+  import SEO from "../models/SEO.js"; // ✅ SEO MODEL IMPORTED
 
-// -------------------------------------
-// Helper Functions
-// -------------------------------------
+  // -------------------------------------
+  // Helper Functions
+  // -------------------------------------
 
-// Normalize to array
-const toArray = (val) => {
-  if (!val) return [];
-  if (Array.isArray(val)) return val.filter(Boolean);
-  if (typeof val === "string") {
-    try {
-      const parsed = JSON.parse(val);
-      if (Array.isArray(parsed)) return parsed.filter(Boolean);
-    } catch {}
-    if (val.includes(",")) return val.split(",").map((v) => v.trim());
-    return [val];
-  }
-  return [];
-};
-
-// -------------------------------------
-// CREATE VISA (⭐ SEO AUTO-CREATE)
-// -------------------------------------
-export const createVisa = async (req, res) => {
-  try {
-    const {
-      title,
-      price,
-      overview,
-      processingTime,
-      visaType,
-      entryType,
-      validity,
-      stayDuration,
-      inclusions,
-      exclusions,
-      documents,
-      relatedVisas,
-      visaCategory,
-      howToApply,
-      termsAndConditions,
-    } = req.body;
-
-    if (!title || !price || !visaCategory) {
-      return res.status(400).json({ message: "Missing required fields" });
+  // Normalize to array
+  const toArray = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.filter(Boolean);
+    if (typeof val === "string") {
+      try {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      } catch {}
+      if (val.includes(",")) return val.split(",").map((v) => v.trim());
+      return [val];
     }
+    return [];
+  };
 
-    // Image handling
-    let mainImage = "";
-    if (req.file) mainImage = req.file.path;
+  // -------------------------------------
+  // CREATE VISA (⭐ SEO AUTO-CREATE)
+  // -------------------------------------
+  export const createVisa = async (req, res) => {
+    try {
+      const {
+        title,
+        price,
+        overview,
+        processingTime,
+        visaType,
+        entryType,
+        validity,
+        stayDuration,
+        inclusions,
+        exclusions,
+        documents,
+        relatedVisas,
+        visaCategory,
+        howToApply,
+        termsAndConditions,
+        status,
+      } = req.body;
 
-    // Create slug
-    const slug = slugify(title, { lower: true, strict: true });
+      if (!title || !price || !visaCategory) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
 
-    // Validate category
-    const foundCategory = await VisaCategory.findById(visaCategory);
-    if (!foundCategory)
-      return res.status(404).json({ message: "Visa category not found" });
+      // Image handling
+      let mainImage = "";
+      if (req.file) mainImage = req.file.path;
 
-    // Create visa entry
-    const newVisa = new Visa({
-      title,
-      slug,
-      price,
-      img: mainImage,
-      overview: toArray(overview),
-      processingTime,
-      visaType,
-      entryType,
-      validity,
-      stayDuration,
-      inclusions: toArray(inclusions),
-      exclusions: toArray(exclusions),
-      documents: toArray(documents),
-      relatedVisas: toArray(relatedVisas),
-      howToApply: toArray(howToApply),
-      termsAndConditions: toArray(termsAndConditions),
-      visaCategory: foundCategory._id,
-    });
+      // Create slug
+      const slug = slugify(title, { lower: true, strict: true });
 
-    await newVisa.save();
+      // Validate category
+      const foundCategory = await VisaCategory.findById(visaCategory);
+      if (!foundCategory)
+        return res.status(404).json({ message: "Visa category not found" });
 
-    // ⭐ CREATE DEFAULT SEO ENTRY
-    await SEO.create({
-      parentType: "visa",
-      parentId: newVisa._id,
-      seoTitle: newVisa.title,
-      seoDescription:
-        typeof overview === "string"
-          ? overview.slice(0, 160)
-          : (overview?.[0] || "").slice(0, 160),
-      seoKeywords: "",
-      seoOgImage: newVisa.img,
-      faqs: [],
-      ratingAvg: 4.9,
-      ratingCount: 15,
-    });
+      // Create visa entry
+      const newVisa = new Visa({
+        title,
+        slug,
+        price,
+        img: mainImage,
+        overview: toArray(overview),
+        processingTime,
+        visaType,
+        entryType,
+        validity,
+        stayDuration,
+        inclusions: toArray(inclusions),
+        exclusions: toArray(exclusions),
+        documents: toArray(documents),
+        relatedVisas: toArray(relatedVisas),
+        howToApply: toArray(howToApply),
+        termsAndConditions: toArray(termsAndConditions),
+        visaCategory: foundCategory._id,
+        status: status || "draft", // ⭐ DEFAULT DRAFT
+      });
+      if (newVisa.status === "published") {
+        newVisa.publishedAt = new Date();
+      }
+      await newVisa.save();
 
-    res.status(201).json({
-      message: "Visa created successfully",
-      visa: newVisa,
-    });
-  } catch (err) {
-    console.error("❌ Error creating visa:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// -------------------------------------
-// UPDATE VISA (⭐ SEO AUTO-UPDATE)
-// -------------------------------------
-export const updateVisa = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const {
-      title,
-      visaCategory,
-      overview,
-      inclusions,
-      exclusions,
-      documents,
-      relatedVisas,
-      howToApply,
-      termsAndConditions,
-    } = req.body;
-
-    const visa = await Visa.findById(id);
-    if (!visa) return res.status(404).json({ message: "Visa not found" });
-
-    // Image update
-    if (req.file) visa.img = req.file.path;
-
-    // Update fields
-    if (title) visa.title = title;
-    if (visaCategory) visa.visaCategory = visaCategory;
-    if (overview) visa.overview = toArray(overview);
-    if (inclusions) visa.inclusions = toArray(inclusions);
-    if (exclusions) visa.exclusions = toArray(exclusions);
-    if (documents) visa.documents = toArray(documents);
-    if (relatedVisas) visa.relatedVisas = toArray(relatedVisas);
-    if (howToApply) visa.howToApply = toArray(howToApply);
-    if (termsAndConditions)
-      visa.termsAndConditions = toArray(termsAndConditions);
-
-    await visa.save();
-
-    const existingSEO = await SEO.findOne({
-      parentType: "visa",
-      parentId: visa._id.toString(),
-    });
-
-    if (!existingSEO) {
+      // ⭐ CREATE DEFAULT SEO ENTRY
       await SEO.create({
         parentType: "visa",
+        parentId: newVisa._id,
+        seoTitle: newVisa.title,
+        seoDescription:
+          typeof overview === "string"
+            ? overview.slice(0, 160)
+            : (overview?.[0] || "").slice(0, 160),
+        seoKeywords: "",
+        seoOgImage: newVisa.img,
+        faqs: [],
+        ratingAvg: 4.9,
+        ratingCount: 15,
+      });
+
+      res.status(201).json({
+        message: "Visa created successfully",
+        visa: newVisa,
+      });
+    } catch (err) {
+      console.error("❌ Error creating visa:", err);
+      res.status(500).json({ error: err.message });
+    }
+  };
+
+  // -------------------------------------
+  // UPDATE VISA (⭐ SEO AUTO-UPDATE)
+  // -------------------------------------
+  export const updateVisa = async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const {
+        title,
+        visaCategory,
+        overview,
+        inclusions,
+        exclusions,
+        documents,
+        relatedVisas,
+        howToApply,
+        termsAndConditions,
+        status, // ⭐ ADD
+      } = req.body;
+
+      const visa = await Visa.findById(id);
+      if (!visa) return res.status(404).json({ message: "Visa not found" });
+
+      // Image update
+      if (req.file) visa.img = req.file.path;
+
+      // Update fields
+      if (title) visa.title = title;
+      if (visaCategory) visa.visaCategory = visaCategory;
+      if (overview) visa.overview = toArray(overview);
+      if (inclusions) visa.inclusions = toArray(inclusions);
+      if (exclusions) visa.exclusions = toArray(exclusions);
+      if (documents) visa.documents = toArray(documents);
+      if (relatedVisas) visa.relatedVisas = toArray(relatedVisas);
+      if (howToApply) visa.howToApply = toArray(howToApply);
+      if (termsAndConditions)
+        visa.termsAndConditions = toArray(termsAndConditions);
+
+      // 🔥 Draft → Published (FIRST TIME ONLY)
+      if (status === "published" && !visa.publishedAt) {
+        visa.publishedAt = new Date();
+      }
+
+      if (status) {
+        visa.status = status;
+      }
+      await visa.save();
+
+      const existingSEO = await SEO.findOne({
+        parentType: "visa",
         parentId: visa._id.toString(),
-        seoTitle: visa.title,
-        seoDescription: visa.overview?.[0]?.slice(0, 160) || "",
-        seoOgImage: visa.img,
       });
+
+      if (!existingSEO) {
+        await SEO.create({
+          parentType: "visa",
+          parentId: visa._id.toString(),
+          seoTitle: visa.title,
+          seoDescription: visa.overview?.[0]?.slice(0, 160) || "",
+          seoOgImage: visa.img,
+        });
+      }
+
+      res.json({ message: "Visa updated successfully", visa });
+    } catch (err) {
+      console.error("❌ Error updating visa:", err);
+      res.status(500).json({ error: err.message });
     }
+  };
 
-    res.json({ message: "Visa updated successfully", visa });
-  } catch (err) {
-    console.error("❌ Error updating visa:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
+  // -------------------------------------
+  // GET ALL VISAS
+  // -------------------------------------
+  export const getAllVisas = async (req, res) => {
+    try {
+      const isAdmin = req.query.admin === "true" || req.user?.role === "admin";
 
-// -------------------------------------
-// GET ALL VISAS
-// -------------------------------------
-export const getAllVisas = async (req, res) => {
-  try {
-    const { category, categorySlug } = req.query;
-    let filter = {};
+      const filter = isAdmin
+        ? {} // 👨‍💼 admin → draft + published
+        : { status: "published" }; // 🌍 public → only published
 
-    if (category) filter.visaCategory = category;
+      const visas = await Visa.find(filter)
+        .populate("visaCategory", "name slug")
+        .sort({ createdAt: -1 });
 
-    if (categorySlug) {
-      const foundCategory = await VisaCategory.findOne({ slug: categorySlug });
-      if (foundCategory) filter.visaCategory = foundCategory._id;
+      res.json(visas);
+    } catch (err) {
+      console.error("❌ Error fetching visas:", err);
+      res.status(500).json({ error: err.message });
     }
+  };
 
-    const visas = await Visa.find(filter)
-      .populate("visaCategory", "name slug")
-      .sort({ createdAt: -1 });
+  // -------------------------------------
+  // GET VISA BY SLUG (⭐ SEO INCLUDED)
+  // -------------------------------------
+  export const getVisaBySlug = async (req, res) => {
+    try {
+      const visa = await Visa.findOne({
+        slug: req.params.slug,
+        status: "published", // 🔥 IMPORTANT
+      }).populate("visaCategory", "name slug");
 
-    res.json(visas);
-  } catch (err) {
-    console.error("❌ Error fetching visas:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
+      if (!visa) return res.status(404).json({ message: "Visa not found" });
 
-// -------------------------------------
-// GET VISA BY SLUG (⭐ SEO INCLUDED)
-// -------------------------------------
-export const getVisaBySlug = async (req, res) => {
-  try {
-    const visa = await Visa.findOne({ slug: req.params.slug }).populate(
-      "visaCategory",
-      "name slug"
-    );
+      const seo = await SEO.findOne({
+        parentType: "visa",
+        parentId: visa._id,
+      });
 
-    if (!visa) return res.status(404).json({ message: "Visa not found" });
+      res.json({ visa, seo });
+    } catch (err) {
+      console.error("❌ Error fetching visa by slug:", err);
+      res.status(500).json({ error: err.message });
+    }
+  };
 
-    const seo = await SEO.findOne({
-      parentType: "visa",
-      parentId: visa._id,
-    });
+  // -------------------------------------
+  // DELETE VISA (⭐ DELETE SEO TOO)
+  // -------------------------------------
+  export const deleteVisa = async (req, res) => {
+    try {
+      const visa = await Visa.findByIdAndDelete(req.params.id);
+      if (!visa) return res.status(404).json({ message: "Visa not found" });
 
-    res.json({ visa, seo });
-  } catch (err) {
-    console.error("❌ Error fetching visa by slug:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
+      // Delete its SEO
+      await SEO.findOneAndDelete({
+        parentType: "visa",
+        parentId: req.params.id,
+      });
 
-// -------------------------------------
-// DELETE VISA (⭐ DELETE SEO TOO)
-// -------------------------------------
-export const deleteVisa = async (req, res) => {
-  try {
-    const visa = await Visa.findByIdAndDelete(req.params.id);
-    if (!visa) return res.status(404).json({ message: "Visa not found" });
+      res.json({ message: "Visa deleted successfully" });
+    } catch (err) {
+      console.error("❌ Error deleting visa:", err);
+      res.status(500).json({ error: err.message });
+    }
+  };
 
-    // Delete its SEO
-    await SEO.findOneAndDelete({
-      parentType: "visa",
-      parentId: req.params.id,
-    });
+  // -------------------------------------
+  // GET VISA BY ID
+  // -------------------------------------
+  export const getVisaById = async (req, res) => {
+    try {
+      const visa = await Visa.findById(req.params.id).populate("visaCategory");
 
-    res.json({ message: "Visa deleted successfully" });
-  } catch (err) {
-    console.error("❌ Error deleting visa:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
+      if (!visa) {
+        return res.status(404).json({
+          success: false,
+          message: "Visa not found",
+        });
+      }
 
-// -------------------------------------
-// GET VISA BY ID
-// -------------------------------------
-export const getVisaById = async (req, res) => {
-  try {
-    const visa = await Visa.findById(req.params.id).populate("visaCategory");
-
-    if (!visa) {
-      return res.status(404).json({
+      res.status(200).json({
+        success: true,
+        visa,
+      });
+    } catch (err) {
+      console.error("❌ Error fetching visa by ID:", err);
+      res.status(500).json({
         success: false,
-        message: "Visa not found",
+        message: "Server error while fetching visa",
+        error: err.message,
       });
     }
+  };
 
-    res.status(200).json({
-      success: true,
-      visa,
-    });
-  } catch (err) {
-    console.error("❌ Error fetching visa by ID:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error while fetching visa",
-      error: err.message,
-    });
-  }
-};
+  // -------------------------------------
+  // GET VISAS BY CATEGORY SLUG
+  // -------------------------------------
+  export const getVisasByCategory = async (req, res) => {
+    try {
+      const category = await VisaCategory.findOne({ slug: req.params.slug });
 
-// -------------------------------------
-// GET VISAS BY CATEGORY SLUG
-// -------------------------------------
-export const getVisasByCategory = async (req, res) => {
-  try {
-    const category = await VisaCategory.findOne({ slug: req.params.slug });
+      if (!category)
+        return res.status(404).json({ message: "Visa category not found" });
 
-    if (!category)
-      return res.status(404).json({ message: "Visa category not found" });
+      const visas = await Visa.find({ visaCategory: category._id })
+        .populate("visaCategory", "name slug")
+        .select("title slug price img");
 
-    const visas = await Visa.find({ visaCategory: category._id })
-      .populate("visaCategory", "name slug")
-      .select("title slug price img");
-
-    res.json(visas);
-  } catch (err) {
-    console.error("❌ Error fetching visas by category:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
+      res.json(visas);
+    } catch (err) {
+      console.error("❌ Error fetching visas by category:", err);
+      res.status(500).json({ error: err.message });
+    }
+  };

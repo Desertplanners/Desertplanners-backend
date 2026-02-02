@@ -56,7 +56,13 @@ export const createHolidayTour = async (req, res) => {
       cancellationPolicy,
       terms,
       itinerary,
+      // 🔥 ADD
+      status: req.body.status || "draft",
     });
+
+    if (tour.status === "published") {
+      tour.publishedAt = new Date();
+    }
 
     await tour.save();
 
@@ -84,7 +90,14 @@ export const createHolidayTour = async (req, res) => {
 // =============================================================
 export const getAllHolidayTours = async (req, res) => {
   try {
-    const tours = await HolidayTour.find().populate("category");
+    const isAdmin = req.query.admin === "true" || req.user?.role === "admin";
+
+    const filter = isAdmin ? {} : { status: "published" };
+
+    const tours = await HolidayTour.find(filter)
+      .populate("category")
+      .sort({ createdAt: -1 });
+
     res.json({ success: true, tours });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -140,6 +153,14 @@ export const updateHolidayTour = async (req, res) => {
       finalSlider = [...finalSlider, ...newSlider];
     }
 
+    // 🔥 Draft → Published (FIRST TIME ONLY)
+    if (req.body.status === "published" && !tour.publishedAt) {
+      tour.publishedAt = new Date();
+    }
+
+    if (req.body.status) {
+      tour.status = req.body.status;
+    }
     tour.sliderImages = finalSlider;
 
     // -------- ITINERARY IMAGES UPDATE --------
@@ -218,14 +239,18 @@ export const deleteHolidayTour = async (req, res) => {
 export const getToursByCategory = async (req, res) => {
   try {
     const category = await HolidayCategory.findOne({ slug: req.params.slug });
-    if (!category)
+    if (!category) {
       return res.status(404).json({ message: "Category not found" });
+    }
 
-    const tours = await HolidayTour.find({ category: category._id }).select(
-      "title slug priceAdult sliderImages duration"
-    );
+    // ✅ PUBLIC = ONLY PUBLISHED
+    const tours = await HolidayTour.find({
+      category: category._id,
+      status: "published",
+    }).select("title slug priceAdult sliderImages duration");
 
-    res.json({ success: true, tours });
+    // ✅ RETURN ARRAY ONLY
+    res.json(tours);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -238,9 +263,10 @@ export const getHolidayPackageBySlug = async (req, res) => {
   try {
     const { packageSlug } = req.params;
 
-    const tour = await HolidayTour.findOne({ slug: packageSlug }).populate(
-      "category"
-    );
+    const tour = await HolidayTour.findOne({
+      slug: packageSlug,
+      status: "published",
+    }).populate("category");
 
     if (!tour) return res.status(404).json({ message: "Package not found" });
 

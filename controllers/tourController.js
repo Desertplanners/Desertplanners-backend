@@ -63,7 +63,7 @@ export const addTour = async (req, res) => {
       // ⭐ DISCOUNT PRICES
       discountPriceAdult,
       discountPriceChild,
-
+      status,
       duration,
       category,
       highlights,
@@ -198,8 +198,12 @@ export const addTour = async (req, res) => {
       termsAndConditions: termsAndConditions || "",
       relatedTours: parseArray(relatedTours),
       pickupDropRequired: pickupDropRequired === "true",
+      status: status || "draft",
     });
 
+    if (tour.status === "published") {
+      tour.publishedAt = new Date();
+    }
     await tour.save();
 
     // ⭐ CREATE DEFAULT SEO
@@ -277,6 +281,15 @@ export const updateTour = async (req, res) => {
       tour.mainImage = req.files.mainImage[0].path;
     }
 
+    // 🔥 Draft → Published (FIRST TIME ONLY)
+    if (req.body.status === "published" && !tour.publishedAt) {
+      tour.publishedAt = new Date();
+    }
+
+    if (req.body.status) {
+      tour.status = req.body.status;
+    }
+
     // ⭐⭐⭐ GALLERY IMAGES UPDATE
     let updatedGallery = [...tour.galleryImages];
 
@@ -312,7 +325,7 @@ export const updateTour = async (req, res) => {
     if (duration !== undefined) {
       tour.duration = duration || "";
     }
-    
+
     if (timings) tour.timings = timings;
     if (location) tour.location = location;
     if (termsAndConditions !== undefined)
@@ -412,12 +425,16 @@ export const updateTour = async (req, res) => {
 // 🟡 Get All Tours
 export const getTours = async (req, res) => {
   try {
-    const tours = await Tour.find()
+    const isAdmin = req.query.admin === "true" || req.user?.role === "admin";
+
+    const filter = isAdmin
+      ? {} // ✅ admin = draft + published
+      : { status: "published" }; // 🌍 public = only published
+
+    const tours = await Tour.find(filter)
       .populate("category", "name")
-      .populate(
-        "relatedTours",
-        "title priceAdult discountPriceAdult mainImage slug"
-      );
+      .sort({ createdAt: -1 });
+
     res.json(tours);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -430,7 +447,10 @@ export const getTourBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const tour = await Tour.findOne({ slug })
+    const tour = await Tour.findOne({
+      slug,
+      status: "published",
+    })
       .populate({
         path: "category",
         model: "Category",
@@ -439,7 +459,7 @@ export const getTourBySlug = async (req, res) => {
       .populate({
         path: "relatedTours",
         model: "Tour",
-        select: "title price mainImage slug category",
+        select: "title priceAdult discountPriceAdult mainImage slug category",
         populate: {
           path: "category",
           model: "Category",
@@ -533,7 +553,10 @@ export const getToursByCategory = async (req, res) => {
     if (!category)
       return res.status(404).json({ message: "Category not found" });
 
-    const tours = await Tour.find({ category: category._id })
+    const tours = await Tour.find({
+      category: category._id,
+      status: "published", // 🔥 THIS LINE FIXES EVERYTHING
+    })
       .populate("category", "name")
       .populate(
         "relatedTours",

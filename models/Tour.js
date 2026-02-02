@@ -18,8 +18,20 @@ const tourSchema = new mongoose.Schema(
     // ⭐ Child Discount Price
     discountPriceChild: { type: Number, default: null },
 
-    duration: { type: String,  },
+    duration: { type: String },
 
+    // 🟢 Status (Draft / Published)
+    status: {
+      type: String,
+      enum: ["draft", "published"],
+      default: "draft",
+    },
+
+    // 📅 Publish Date
+    publishedAt: {
+      type: Date,
+      default: null,
+    },
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
