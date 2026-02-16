@@ -79,7 +79,7 @@ export const deleteVisaCategory = async (req, res) => {
 export const updateVisaCategory = async (req, res) => {
   try {
     const name = req.body?.name;
-
+// 
     if (!name || name.trim() === "") {
       return res.status(400).json({
         message: "Category name is required",
