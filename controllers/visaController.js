@@ -3,7 +3,7 @@ import VisaCategory from "../models/visaCategoryModel.js";
 import slugify from "slugify";
 import { visaUpload } from "../middleware/visaUpload.js";
 import SEO from "../models/SEO.js"; // ✅ SEO MODEL IMPORTED
-import VisaSubCategory from "../models/visaSubCategoryModel.js";
+import VisaSubCategory from "../models/VisaSubCategoryModel.js";
 
 
 // -------------------------------------
