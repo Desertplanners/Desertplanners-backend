@@ -18,6 +18,11 @@ const visaCategorySchema = new mongoose.Schema(
       trim: true,
     },
 
+    image: {
+      // ⭐ ADD THIS
+      type: String,
+      default: "",
+    },
     // ⭐ NEW — WordPress-style HTML content
     description: {
       type: String,
@@ -26,7 +31,6 @@ const visaCategorySchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
 
 // Auto-generate slug from name
 visaCategorySchema.pre("save", function (next) {

@@ -9,6 +9,7 @@ import Visa from "../models/Visa.js"; // ⭐ FIX — Missing import added
 export const addVisaCategory = async (req, res) => {
   try {
     const { name } = req.body;
+    const image = req.file ? req.file.path : "";
     if (!name)
       return res.status(400).json({ message: "Visa category name is required" });
 
@@ -19,6 +20,7 @@ export const addVisaCategory = async (req, res) => {
     const category = new VisaCategory({
       name,
       slug: slugify(name, { lower: true, strict: true }),
+      image,
     });
 
     await category.save();
@@ -62,6 +64,7 @@ export const deleteVisaCategory = async (req, res) => {
 export const updateVisaCategory = async (req, res) => {
   try {
     const { name } = req.body;
+    const image = req.file ? req.file.path : undefined;
 
     if (!name)
       return res.status(400).json({ message: "Category name is required" });
@@ -71,6 +74,7 @@ export const updateVisaCategory = async (req, res) => {
       {
         name,
         slug: slugify(name, { lower: true, strict: true }),
+        ...(image && { image }),
       },
       { new: true }
     );

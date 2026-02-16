@@ -11,6 +11,7 @@ const seoSchema = new mongoose.Schema(
         "holiday",
         "tourCategory",
         "visaCategory",
+        "visaSubCategory", 
         "holidayCategory",
         "page", 
       ],

@@ -53,6 +53,12 @@ const visaSchema = new mongoose.Schema(
       ref: "VisaCategory",
       required: true,
     },
+    // ⭐ Visa Sub Category (NEW)
+    visaSubCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "VisaSubCategory",
+      required: true,
+    },
     // ⭐ DRAFT / PUBLISH SYSTEM
     status: {
       type: String,

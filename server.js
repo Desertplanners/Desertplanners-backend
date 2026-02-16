@@ -43,6 +43,7 @@ import enquiryRoutes from "./routes/enquiryRoutes.js";
 import visaRoutes from "./routes/visaRoutes.js";
 import sectionRoutes from "./routes/sectionRoutes.js";
 import visaCategoryRoutes from "./routes/visaCategoryRoutes.js";
+import visaSubCategoryRoutes from "./routes/visaSubCategoryRoutes.js"
 import paymentRoutes from "./routes/paymentRoutes.js";
 import bannerRoutes from "./routes/bannerRoutes.js";
 import visaBookingRoutes from "./routes/visaBookingRoutes.js";
@@ -123,6 +124,7 @@ app.use("/api/enquiries", enquiryRoutes);
 app.use("/api/visas", visaRoutes);
 app.use("/api/sections", sectionRoutes);
 app.use("/api/visa-categories", visaCategoryRoutes);
+app.use("/api/visa-sub-categories", visaSubCategoryRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/banner", bannerRoutes);
 app.use("/api/visa-bookings", visaBookingRoutes);
