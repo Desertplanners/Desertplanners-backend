@@ -141,6 +141,7 @@ export const updateVisa = async (req, res) => {
 
     const {
       title,
+      price, 
       visaCategory,
       visaSubCategory,
       overview,
@@ -161,6 +162,9 @@ export const updateVisa = async (req, res) => {
 
     // Update fields
     if (title) visa.title = title;
+    if (price !== undefined) {
+      visa.price = price;
+    }
     if (visaCategory) visa.visaCategory = visaCategory;
     if (overview) visa.overview = toArray(overview);
     if (inclusions) visa.inclusions = toArray(inclusions);
