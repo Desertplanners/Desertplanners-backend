@@ -5,7 +5,6 @@ import { visaUpload } from "../middleware/visaUpload.js";
 import SEO from "../models/SEO.js"; // ✅ SEO MODEL IMPORTED
 import VisaSubCategory from "../models/VisaSubCategoryModel.js";
 
-
 // -------------------------------------
 // Helper Functions
 // -------------------------------------
@@ -50,7 +49,7 @@ export const createVisa = async (req, res) => {
       status,
     } = req.body;
 
-    if (!title || !price || !visaCategory || !visaSubCategory) {
+    if (!title || price === undefined || !visaCategory || !visaSubCategory) {
       return res.status(400).json({
         message: "Title, price, visa category & sub category are required",
       });
@@ -226,12 +225,9 @@ export const getAllVisas = async (req, res) => {
   try {
     const { categorySlug, subCategorySlug } = req.query;
 
-    const isAdmin =
-      req.query.admin === "true" || req.user?.role === "admin";
+    const isAdmin = req.query.admin === "true" || req.user?.role === "admin";
 
-    let filter = isAdmin
-      ? {}
-      : { status: "published" };
+    let filter = isAdmin ? {} : { status: "published" };
 
     /* ===============================
        FILTER BY CATEGORY SLUG
@@ -371,9 +367,7 @@ export const getVisasByCategory = async (req, res) => {
 
 export const getVisaNavbarTree = async (req, res) => {
   try {
-    const categories = await VisaCategory.find({})
-      .select("name slug")
-      .lean();
+    const categories = await VisaCategory.find({}).select("name slug").lean();
 
     const data = await Promise.all(
       categories.map(async (cat) => {

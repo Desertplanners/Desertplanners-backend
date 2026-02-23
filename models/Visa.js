@@ -5,7 +5,10 @@ const visaSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
-    price: { type: Number, required: true },
+    price: {
+      type: mongoose.Schema.Types.Mixed,
+      required: true,
+    },
 
     // ✅ overview ab list wise
     overview: {
