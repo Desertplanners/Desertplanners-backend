@@ -210,9 +210,13 @@ export const updateHolidayTour = async (req, res) => {
     // Preserve old images if no new image uploaded
     tour.itinerary = itinerary.map((day, index) => ({
       day: index + 1,
-      title: day.title,
+      title: day.title || "",
       image: day.image || tour.itinerary[index]?.image || "",
-      points: Array.isArray(day.points) ? day.points : [],
+      points: Array.isArray(day.points)
+        ? day.points
+        : typeof day.points === "string"
+        ? [day.points]
+        : [],
     }));
 
     // -------- OTHER ARRAYS --------
