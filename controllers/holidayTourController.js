@@ -34,10 +34,17 @@ export const createHolidayTour = async (req, res) => {
       ? req.files.itineraryImages.map((img) => img.path)
       : [];
 
+    const itineraryPoints = req.body.itineraryPoints || [];
+
     const itinerary = (itineraryTitle || []).map((t, index) => ({
       day: index + 1,
       title: t,
       image: itineraryImages[index] || "",
+      points: Array.isArray(itineraryPoints[index])
+        ? itineraryPoints[index]
+        : itineraryPoints[index]
+        ? [itineraryPoints[index]]
+        : [],
     }));
 
     const tour = new HolidayTour({
@@ -180,6 +187,8 @@ export const updateHolidayTour = async (req, res) => {
       });
     }
 
+    const itineraryPoints = req.body.itineraryPoints || [];
+
     tour.itinerary = titles.map((t, index) => ({
       day: index + 1,
       title: t,
@@ -187,6 +196,11 @@ export const updateHolidayTour = async (req, res) => {
         newImages[index] === "__KEEP_OLD__"
           ? tour.itinerary[index]?.image || ""
           : newImages[index] || tour.itinerary[index]?.image || "",
+      points: Array.isArray(itineraryPoints[index])
+        ? itineraryPoints[index]
+        : itineraryPoints[index]
+        ? [itineraryPoints[index]]
+        : [],
     }));
 
     // -------- OTHER ARRAYS --------

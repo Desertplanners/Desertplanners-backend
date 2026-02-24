@@ -50,6 +50,7 @@ const holidayTourSchema = new mongoose.Schema(
         day: Number,
         title: String,
         image: String,
+        points: [{ type: String }],
       },
     ],
 
