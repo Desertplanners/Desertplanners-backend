@@ -13,12 +13,6 @@ import { holidayTourUpload } from "../middleware/holidayTourUpload.js";
 
 const router = express.Router();
 
-// ⭐ Allow up to 50 itinerary image fields
-const itineraryFields = Array.from({ length: 50 }).map((_, i) => ({
-  name: `itineraryImages_${i}`,
-  maxCount: 1,
-}));
-
 /* =========================================================
    🟢 PUBLIC ROUTES (WEBSITE / NAVBAR)
    👉 ONLY status: "published"
@@ -44,7 +38,7 @@ router.post(
   holidayTourUpload.fields([
     { name: "mainImage", maxCount: 1 },
     { name: "sliderImages", maxCount: 20 },
-    ...itineraryFields,
+    { name: "itineraryImages", maxCount: 50 }, // ✅ Dynamic itinerary images
   ]),
   createHolidayTour
 );
@@ -58,7 +52,7 @@ router.put(
   holidayTourUpload.fields([
     { name: "mainImage", maxCount: 1 },
     { name: "sliderImages", maxCount: 20 },
-    ...itineraryFields,
+    { name: "itineraryImages", maxCount: 50 }, // ✅ Dynamic itinerary images
   ]),
   updateHolidayTour
 );

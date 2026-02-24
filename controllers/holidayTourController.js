@@ -34,17 +34,26 @@ export const createHolidayTour = async (req, res) => {
       ? req.files.itineraryImages.map((img) => img.path)
       : [];
 
-    const itineraryPoints = req.body.itineraryPoints || [];
+    let itinerary = [];
+    try {
+      itinerary = JSON.parse(req.body.itinerary || "[]");
+    } catch (e) {
+      itinerary = [];
+    }
 
-    const itinerary = (itineraryTitle || []).map((t, index) => ({
+    const uploadedImages = req.files?.itineraryImages || [];
+
+    uploadedImages.forEach((file, i) => {
+      if (itinerary[i]) {
+        itinerary[i].image = file.path;
+      }
+    });
+
+    itinerary = itinerary.map((day, index) => ({
       day: index + 1,
-      title: t,
-      image: itineraryImages[index] || "",
-      points: Array.isArray(itineraryPoints[index])
-        ? itineraryPoints[index]
-        : itineraryPoints[index]
-        ? [itineraryPoints[index]]
-        : [],
+      title: day.title,
+      image: day.image || "",
+      points: Array.isArray(day.points) ? day.points : [],
     }));
 
     const tour = new HolidayTour({
@@ -170,37 +179,40 @@ export const updateHolidayTour = async (req, res) => {
     }
     tour.sliderImages = finalSlider;
 
-    // -------- ITINERARY IMAGES UPDATE --------
-    const titles = Array.isArray(req.body.itineraryTitle)
-      ? req.body.itineraryTitle
-      : [req.body.itineraryTitle];
+    // -------- MODERN ITINERARY UPDATE --------
 
-    let newImages = Array(titles.length).fill(null);
-
-    if (req.files) {
-      Object.keys(req.files).forEach((fieldName) => {
-        if (fieldName.startsWith("itineraryImages_")) {
-          const index = Number(fieldName.split("_")[1]);
-          const file = req.files[fieldName][0];
-          if (file) newImages[index] = file.path;
-        }
-      });
+    // Parse itinerary JSON
+    let itinerary = [];
+    try {
+      itinerary = JSON.parse(req.body.itinerary || "[]");
+    } catch (e) {
+      itinerary = [];
     }
 
-    const itineraryPoints = req.body.itineraryPoints || [];
+    // New uploaded itinerary images
+    const itineraryImages = req.files?.itineraryImages || [];
 
-    tour.itinerary = titles.map((t, index) => ({
+    // Indexes sent from frontend
+    let imageIndexes = req.body.itineraryImageIndexes || [];
+
+    if (!Array.isArray(imageIndexes)) {
+      imageIndexes = [imageIndexes];
+    }
+
+    // Attach new images to correct index
+    itineraryImages.forEach((file, i) => {
+      const index = Number(imageIndexes[i]);
+      if (!isNaN(index) && itinerary[index]) {
+        itinerary[index].image = file.path;
+      }
+    });
+
+    // Preserve old images if no new image uploaded
+    tour.itinerary = itinerary.map((day, index) => ({
       day: index + 1,
-      title: t,
-      image:
-        newImages[index] === "__KEEP_OLD__"
-          ? tour.itinerary[index]?.image || ""
-          : newImages[index] || tour.itinerary[index]?.image || "",
-      points: Array.isArray(itineraryPoints[index])
-        ? itineraryPoints[index]
-        : itineraryPoints[index]
-        ? [itineraryPoints[index]]
-        : [],
+      title: day.title,
+      image: day.image || tour.itinerary[index]?.image || "",
+      points: Array.isArray(day.points) ? day.points : [],
     }));
 
     // -------- OTHER ARRAYS --------
