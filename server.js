@@ -47,6 +47,7 @@ import visaSubCategoryRoutes from "./routes/visaSubCategoryRoutes.js"
 import paymentRoutes from "./routes/paymentRoutes.js";
 import bannerRoutes from "./routes/bannerRoutes.js";
 import visaBookingRoutes from "./routes/visaBookingRoutes.js";
+import holidayBookingRoutes from "./routes/holidayBookingRoutes.js";
 import visaPaymentRoutes from "./routes/visaPaymentRoutes.js";
 import holidayCategoryRoutes from "./routes/holidayCategoryRoutes.js";
 import holidayTourRoutes from "./routes/holidayTourRoutes.js";
@@ -56,6 +57,7 @@ import robotsRoute from "./routes/robotsRoute.js";
 import blogCategoryRoutes from "./routes/blogCategoryRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
+import holidayPaymentRoutes from "./routes/holidayPaymentRoutes.js";
 // import ogRoutes from "./routes/ogRoutes.js"; // ⭐ OG ROUTE (CRITICAL)
 
 // ==========================
@@ -128,7 +130,9 @@ app.use("/api/visa-sub-categories", visaSubCategoryRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/banner", bannerRoutes);
 app.use("/api/visa-bookings", visaBookingRoutes);
+app.use("/api/holiday-booking", holidayBookingRoutes);
 app.use("/api/visa-payment", visaPaymentRoutes);
+app.use("/api/holiday-payment", holidayPaymentRoutes);
 app.use("/api/holiday-categories", holidayCategoryRoutes);
 app.use("/api/holiday-tour", holidayTourRoutes);
 app.use("/api/blog-categories", blogCategoryRoutes);
