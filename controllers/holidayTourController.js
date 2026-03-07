@@ -2,8 +2,7 @@ import HolidayTour from "../models/HolidayTour.js";
 import HolidayCategory from "../models/holidayCategoryModel.js";
 import slugify from "slugify";
 import SEO from "../models/SEO.js";
-import puppeteer from "puppeteer-core";
-import chromium from "chrome-aws-lambda";
+import puppeteer from "puppeteer";
 // =============================================================
 // ⭐ CREATE HOLIDAY TOUR (SEO INCLUDED)
 // =============================================================
@@ -711,9 +710,8 @@ Meal Plan
   </html>
   `;
   const browser = await puppeteer.launch({
-    args: chromium.args,
-    executablePath: await chromium.executablePath,
-    headless: chromium.headless,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    headless: "new"
   });
 
   const page = await browser.newPage();
@@ -1045,9 +1043,8 @@ export const downloadFlyerWithLogo = async (req, res) => {
     `;
 
     const browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath,
-      headless: chromium.headless,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      headless: "new"
     });
 
     const page = await browser.newPage();
@@ -1338,9 +1335,8 @@ export const downloadFlyerWithoutLogo = async (req, res) => {
     `;
 
     const browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath,
-      headless: chromium.headless,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      headless: "new"
     });
 
     const page = await browser.newPage();
