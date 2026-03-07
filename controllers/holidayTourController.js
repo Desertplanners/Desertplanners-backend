@@ -4,6 +4,8 @@ import slugify from "slugify";
 import SEO from "../models/SEO.js";
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
+
+chromium.setGraphicsMode = false;
 // =============================================================
 // ⭐ CREATE HOLIDAY TOUR (SEO INCLUDED)
 // =============================================================
@@ -314,11 +316,11 @@ export const getHolidayPackageBySlug = async (req, res) => {
 
 export const downloadItinerary = async (req, res) => {
   try {
-  const tour = await HolidayTour.findOne({ slug: req.params.slug });
+    const tour = await HolidayTour.findOne({ slug: req.params.slug });
 
-  if (!tour) return res.status(404).send("Tour not found");
+    if (!tour) return res.status(404).send("Tour not found");
 
-  const html = `
+    const html = `
   <html>
   
   <head>
@@ -711,43 +713,50 @@ Meal Plan
   </body>
   </html>
   `;
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    executablePath: await chromium.executablePath(),
-    headless: true,
-  });
-  const page = await browser.newPage();
+    const isProduction = process.env.NODE_ENV === "production";
 
-  await page.setContent(html, {
-    waitUntil: ["load", "networkidle0"]
-  });
+    const browser = await puppeteer.launch({
+      args: isProduction
+        ? [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"]
+        : [],
+      executablePath: isProduction
+        ? await chromium.executablePath()
+        : "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      headless: true,
+    });
 
-  const pdf = await page.pdf({
-    format: "A4",
-    printBackground: true,
-    margin: {
-      top: "10mm",
-      bottom: "10mm",
-      left: "10mm",
-      right: "10mm",
-    },
-  });
+    const page = await browser.newPage();
+    await page.setDefaultNavigationTimeout(0);
 
-  await browser.close();
+    await page.setContent(html, {
+      waitUntil: "domcontentloaded",
+      timeout: 0,
+    });
 
-  res.set({
-    "Content-Type": "application/pdf",
-    "Content-Disposition": `attachment; filename=${tour.slug}-itinerary.pdf`,
-  });
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "10mm",
+        bottom: "10mm",
+        left: "10mm",
+        right: "10mm",
+      },
+    });
 
-  res.send(pdf);
-} catch (error) {
-  console.error("PDF Error:", error);
-  res.status(500).json({ message: "Failed to generate itinerary PDF" });
-}
+    await browser.close();
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename=${tour.slug}-itinerary.pdf`,
+    });
+
+    res.send(pdf);
+  } catch (error) {
+    console.error("PDF Error:", error);
+    res.status(500).json({ message: "Failed to generate itinerary PDF" });
+  }
 };
-
-
 
 export const downloadFlyerWithLogo = async (req, res) => {
   try {
@@ -1010,13 +1019,16 @@ export const downloadFlyerWithLogo = async (req, res) => {
       </div>
 
       ${tour.itinerary
-        .slice(0,3)
+        .slice(0, 3)
         .map(
           (d) => `
           <div class="day">
             <div class="day-title">Day ${d.day} - ${d.title}</div>
             <ul>
-              ${d.points.slice(0,3).map((p)=>`<li>${p}</li>`).join("")}
+              ${d.points
+                .slice(0, 3)
+                .map((p) => `<li>${p}</li>`)
+                .join("")}
             </ul>
           </div>
         `
@@ -1035,7 +1047,7 @@ export const downloadFlyerWithLogo = async (req, res) => {
       </div>
 
       <ul>
-        ${tour.inclusions.map((i)=>`<li>${i}</li>`).join("")}
+        ${tour.inclusions.map((i) => `<li>${i}</li>`).join("")}
       </ul>
 
     </div>
@@ -1057,15 +1069,24 @@ export const downloadFlyerWithLogo = async (req, res) => {
     </html>
     `;
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     const browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
+      args: isProduction
+        ? [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"]
+        : [],
+      executablePath: isProduction
+        ? await chromium.executablePath()
+        : "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
       headless: true,
     });
+
     const page = await browser.newPage();
+    await page.setDefaultNavigationTimeout(0);
 
     await page.setContent(html, {
-      waitUntil: ["load", "networkidle0"]
+      waitUntil: "domcontentloaded",
+      timeout: 0,
     });
 
     const pdf = await page.pdf({
@@ -1083,11 +1104,10 @@ export const downloadFlyerWithLogo = async (req, res) => {
 
     res.set({
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename=${tour.slug}-flyer.pdf`
+      "Content-Disposition": `attachment; filename=${tour.slug}-flyer.pdf`,
     });
 
     res.send(pdf);
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -1308,9 +1328,9 @@ export const downloadFlyerWithoutLogo = async (req, res) => {
       </div>
 
       ${tour.itinerary
-        .slice(0,3)
+        .slice(0, 3)
         .map(
-          (d)=>`
+          (d) => `
           <div class="day">
 
             <div class="day-title">
@@ -1318,7 +1338,10 @@ export const downloadFlyerWithoutLogo = async (req, res) => {
             </div>
 
             <ul>
-            ${d.points.slice(0,3).map(p=>`<li>${p}</li>`).join("")}
+            ${d.points
+              .slice(0, 3)
+              .map((p) => `<li>${p}</li>`)
+              .join("")}
             </ul>
 
           </div>
@@ -1338,7 +1361,7 @@ export const downloadFlyerWithoutLogo = async (req, res) => {
       </div>
 
       <ul>
-      ${tour.inclusions.map(i=>`<li>${i}</li>`).join("")}
+      ${tour.inclusions.map((i) => `<li>${i}</li>`).join("")}
       </ul>
 
     </div>
@@ -1357,16 +1380,23 @@ export const downloadFlyerWithoutLogo = async (req, res) => {
     </html>
     `;
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     const browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
+      args: isProduction
+        ? [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"]
+        : [],
+      executablePath: isProduction
+        ? await chromium.executablePath()
+        : "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
       headless: true,
     });
-
     const page = await browser.newPage();
+    await page.setDefaultNavigationTimeout(0);
 
     await page.setContent(html, {
-      waitUntil: ["load", "networkidle0"]
+      waitUntil: "domcontentloaded",
+      timeout: 0,
     });
 
     const pdf = await page.pdf({
@@ -1384,11 +1414,10 @@ export const downloadFlyerWithoutLogo = async (req, res) => {
 
     res.set({
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename=${tour.slug}-flyer.pdf`
+      "Content-Disposition": `attachment; filename=${tour.slug}-flyer.pdf`,
     });
 
     res.send(pdf);
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
