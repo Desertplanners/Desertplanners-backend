@@ -516,7 +516,10 @@ margin-top:5px;
   
   <div class="cover">
   
-  <img src="${tour.sliderImages?.[0] || ""}" />
+  <img src="${
+    tour.sliderImages?.[0] ||
+    "https://via.placeholder.com/1200x600?text=Desert+Planners"
+  }" />
   
   <div class="cover-overlay">
   
@@ -717,7 +720,12 @@ Meal Plan
 
     const browser = await puppeteer.launch({
       args: isProduction
-        ? [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"]
+        ? [
+            ...chromium.args,
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+          ]
         : [],
       executablePath: isProduction
         ? await chromium.executablePath()
@@ -728,9 +736,21 @@ Meal Plan
     const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(0);
 
-    await page.setContent(html, {
-      waitUntil: "domcontentloaded",
-      timeout: 0,
+    await page.setContent(html);
+
+    await page.evaluate(async () => {
+      const images = Array.from(document.images);
+
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+
+          return new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        })
+      );
     });
 
     const pdf = await page.pdf({
@@ -767,7 +787,9 @@ export const downloadFlyerWithLogo = async (req, res) => {
     const logoUrl =
       "https://desertplanners-backend.onrender.com/public/desertplanners_logo.png";
 
-    const heroImage = tour.sliderImages?.[0] || "";
+    const heroImage =
+      tour.sliderImages?.[0] ||
+      "https://via.placeholder.com/1200x600?text=Desert+Planners";
 
     const html = `
     <html>
@@ -1073,7 +1095,12 @@ export const downloadFlyerWithLogo = async (req, res) => {
 
     const browser = await puppeteer.launch({
       args: isProduction
-        ? [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"]
+        ? [
+            ...chromium.args,
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+          ]
         : [],
       executablePath: isProduction
         ? await chromium.executablePath()
@@ -1084,9 +1111,21 @@ export const downloadFlyerWithLogo = async (req, res) => {
     const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(0);
 
-    await page.setContent(html, {
-      waitUntil: "domcontentloaded",
-      timeout: 0,
+    await page.setContent(html);
+
+    await page.evaluate(async () => {
+      const images = Array.from(document.images);
+
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+
+          return new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        })
+      );
     });
 
     const pdf = await page.pdf({
@@ -1119,7 +1158,9 @@ export const downloadFlyerWithoutLogo = async (req, res) => {
 
     if (!tour) return res.status(404).send("Tour not found");
 
-    const heroImage = tour.sliderImages?.[0] || "";
+    const heroImage =
+      tour.sliderImages?.[0] ||
+      "https://via.placeholder.com/1200x600?text=Desert+Planners";
 
     const html = `
     <html>
@@ -1384,7 +1425,12 @@ export const downloadFlyerWithoutLogo = async (req, res) => {
 
     const browser = await puppeteer.launch({
       args: isProduction
-        ? [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"]
+        ? [
+            ...chromium.args,
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+          ]
         : [],
       executablePath: isProduction
         ? await chromium.executablePath()
@@ -1394,9 +1440,21 @@ export const downloadFlyerWithoutLogo = async (req, res) => {
     const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(0);
 
-    await page.setContent(html, {
-      waitUntil: "domcontentloaded",
-      timeout: 0,
+    await page.setContent(html);
+
+    await page.evaluate(async () => {
+      const images = Array.from(document.images);
+
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+
+          return new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        })
+      );
     });
 
     const pdf = await page.pdf({
