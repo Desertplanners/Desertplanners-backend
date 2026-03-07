@@ -2,7 +2,8 @@ import HolidayTour from "../models/HolidayTour.js";
 import HolidayCategory from "../models/holidayCategoryModel.js";
 import slugify from "slugify";
 import SEO from "../models/SEO.js";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "chrome-aws-lambda";
 // =============================================================
 // ⭐ CREATE HOLIDAY TOUR (SEO INCLUDED)
 // =============================================================
@@ -312,6 +313,7 @@ export const getHolidayPackageBySlug = async (req, res) => {
 };
 
 export const downloadItinerary = async (req, res) => {
+  try {
   const tour = await HolidayTour.findOne({ slug: req.params.slug });
 
   if (!tour) return res.status(404).send("Tour not found");
@@ -710,17 +712,25 @@ Meal Plan
   </html>
   `;
   const browser = await puppeteer.launch({
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    headless: "new"
+    args: chromium.args,
+    executablePath: await chromium.executablePath,
+    headless: chromium.headless,
   });
-
   const page = await browser.newPage();
 
-  await page.setContent(html, { waitUntil: "networkidle0" });
+  await page.setContent(html, {
+    waitUntil: ["load", "networkidle0"]
+  });
 
   const pdf = await page.pdf({
     format: "A4",
     printBackground: true,
+    margin: {
+      top: "10mm",
+      bottom: "10mm",
+      left: "10mm",
+      right: "10mm",
+    },
   });
 
   await browser.close();
@@ -731,7 +741,12 @@ Meal Plan
   });
 
   res.send(pdf);
+} catch (error) {
+  console.error("PDF Error:", error);
+  res.status(500).json({ message: "Failed to generate itinerary PDF" });
+}
 };
+
 
 
 export const downloadFlyerWithLogo = async (req, res) => {
@@ -1043,17 +1058,26 @@ export const downloadFlyerWithLogo = async (req, res) => {
     `;
 
     const browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      headless: "new"
+      args: chromium.args,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
     });
 
     const page = await browser.newPage();
 
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    await page.setContent(html, {
+      waitUntil: ["load", "networkidle0"]
+    });
 
     const pdf = await page.pdf({
       format: "A4",
-      printBackground: true
+      printBackground: true,
+      margin: {
+        top: "10mm",
+        bottom: "10mm",
+        left: "10mm",
+        right: "10mm",
+      },
     });
 
     await browser.close();
@@ -1335,17 +1359,26 @@ export const downloadFlyerWithoutLogo = async (req, res) => {
     `;
 
     const browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      headless: "new"
+      args: chromium.args,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
     });
 
     const page = await browser.newPage();
 
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    await page.setContent(html, {
+      waitUntil: ["load", "networkidle0"]
+    });
 
     const pdf = await page.pdf({
       format: "A4",
-      printBackground: true
+      printBackground: true,
+      margin: {
+        top: "10mm",
+        bottom: "10mm",
+        left: "10mm",
+        right: "10mm",
+      },
     });
 
     await browser.close();
