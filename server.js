@@ -146,6 +146,11 @@ app.use("/api/seo", seoRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ==========================
+// 📁 Serve Public Files (LOGO / STATIC)
+// ==========================
+app.use("/public", express.static(path.join(__dirname, "public")));
+
+// ==========================
 // 🌐 SERVE FRONTEND (VITE BUILD)
 // ==========================
 

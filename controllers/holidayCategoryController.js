@@ -1,4 +1,3 @@
-// controllers/holidayCategoryController.js
 import HolidayCategory from "../models/holidayCategoryModel.js";
 import HolidayTour from "../models/HolidayTour.js";
 import slugify from "slugify";
@@ -7,15 +6,22 @@ import SEO from "../models/SEO.js";
 // 🟢 Add new Holiday Category
 export const addHolidayCategory = async (req, res) => {
   try {
-    const { name } = req.body;
-    if (!name)
-      return res.status(400).json({ message: "Category name is required" });
+    const { name, type } = req.body;
+
+    if (!name || !type)
+      return res
+        .status(400)
+        .json({ message: "Category name and type are required" });
 
     const exists = await HolidayCategory.findOne({ name });
     if (exists)
       return res.status(400).json({ message: "Category already exists" });
 
-    const category = new HolidayCategory({ name });
+    const category = new HolidayCategory({
+      name,
+      type,
+    });
+
     await category.save();
 
     res.status(201).json(category);
@@ -56,7 +62,7 @@ export const deleteHolidayCategory = async (req, res) => {
 // 🟢 Update Category + Update Slug + Update SEO parentId
 export const updateHolidayCategory = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, type } = req.body;
 
     const category = await HolidayCategory.findById(req.params.id);
     if (!category)
@@ -67,6 +73,8 @@ export const updateHolidayCategory = async (req, res) => {
 
     category.name = name;
     category.slug = newSlug;
+    category.type = type;
+
     await category.save();
 
     await SEO.findOneAndUpdate(
@@ -117,7 +125,6 @@ export const getHolidayCategoryBySlug = async (req, res) => {
   }
 };
 
-
 // 🟣 Get single holiday category (for SEO / Content Editor)
 export const getHolidayCategoryById = async (req, res) => {
   try {
@@ -133,7 +140,6 @@ export const getHolidayCategoryById = async (req, res) => {
   }
 };
 
-
 // 🟣 Update holiday category description (HTML content)
 export const updateHolidayCategoryDescription = async (req, res) => {
   try {
@@ -147,7 +153,9 @@ export const updateHolidayCategoryDescription = async (req, res) => {
     category.description = description || "";
     await category.save();
 
-    res.json({ message: "Holiday category content updated successfully" });
+    res.json({
+      message: "Holiday category content updated successfully",
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

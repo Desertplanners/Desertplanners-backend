@@ -17,7 +17,11 @@ const holidayCategorySchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
-
+    type: {
+      type: String,
+      enum: ["fixed", "customized"],
+      required: true,
+    },
     // ⭐ NEW — WordPress-style HTML content
     description: {
       type: String,

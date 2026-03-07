@@ -7,6 +7,9 @@ import {
   deleteHolidayTour,
   getToursByCategory,
   getHolidayPackageBySlug,
+  downloadItinerary,
+  downloadFlyerWithLogo,
+  downloadFlyerWithoutLogo
 } from "../controllers/holidayTourController.js";
 
 import { holidayTourUpload } from "../middleware/holidayTourUpload.js";
@@ -20,6 +23,15 @@ const router = express.Router();
 
 // ⭐ GET HOLIDAY TOURS BY CATEGORY (Navbar / Listing page)
 router.get("/category/:slug", getToursByCategory);
+
+// ⭐ DOWNLOAD ITINERARY
+router.get("/download/itinerary/:slug", downloadItinerary);
+
+// ⭐ DOWNLOAD FLYER WITH LOGO
+router.get("/download/flyer-logo/:slug", downloadFlyerWithLogo);
+
+// ⭐ DOWNLOAD FLYER WITHOUT LOGO
+router.get("/download/flyer-no-logo/:slug", downloadFlyerWithoutLogo);
 
 // ⭐ GET SINGLE HOLIDAY PACKAGE BY SLUG (Detail page)
 router.get(
