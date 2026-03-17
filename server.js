@@ -17,7 +17,7 @@ import path from "path";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { fileURLToPath } from "url";
-
+import https from "https";
 // ==========================
 // 📁 __dirname FIX (VERY IMPORTANT)
 // ==========================
@@ -102,6 +102,13 @@ app.use(
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
 );
+
+// ==========================
+//  HEALTH CHECK (VERY IMPORTANT)
+// ==========================
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
 
 // ==========================
 // 🧭 ROUTES ORDER (VERY IMPORTANT)
@@ -196,3 +203,19 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
+
+// ==========================
+// 🔁 SELF PING (KEEP SERVER AWAKE)
+// ==========================
+
+
+setInterval(() => {
+  https
+    .get("https://desertplanners-backend.onrender.com/health", (res) => {
+      console.log("🔁 Self ping success");
+    })
+    .on("error", (err) => {
+      console.log("❌ Self ping error:", err.message);
+    });
+}, 4 * 60 * 1000); // हर 4 मिनट
